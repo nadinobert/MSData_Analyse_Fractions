@@ -180,7 +180,7 @@ WHERE ((y.start >= t.start AND y.start <= t.end)
 --           WHERE p.modifications <> ''
 --;
 
--- was ist das für 1 code?
+-- was ist das für 1 code? lol
 -- extend table with detected TM areas and modification in related protein
 -- shows all proteins and peptides with detected TM areas in specific analysis ID's (set analysis ID's)
 -- + shows if proteins with detected TM areas got modified
