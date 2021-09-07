@@ -115,6 +115,7 @@ WHERE  accession = 'CAI82388.1'
 ;
 
 -- select all detected Proteins containing TM areas in specific approach (set analysisID's)!
+-- file name: TMProtein
 SELECT DISTINCT p.accession, r.sample, a.id, p.abundance, p.confidenceSample
 FROM proteins p
 INNER JOIN result r
@@ -123,10 +124,11 @@ INNER JOIN analysis a
     on a.id = r.analysis_id
 INNER JOIN transmembrane_areas ta
     ON p.accession = ta.accession
-WHERE (a.id = 33)
+WHERE ((a.id = 34 OR a.id = 35 OR a.id = 36))
 ;
 
--- shows all Proteins and peptides with detected TM areas in specific analysis ID's (set analysis ID's)
+-- shows all Proteins and peptides when TM areas were detected in specific analysis ID's (set analysis ID's)
+-- file name: TMAreas
 select * from
 transmembrane_areas t
 inner join
@@ -139,12 +141,15 @@ inner join
     result r on r.id = y.result_id
 inner join
     analysis a2 on r.analysis_id = a2.id
-WHERE ((y.start >= t.start AND y.start <= t.end) OR (y.end >= t.start AND y.end <= t.end)) AND (a2.id = 33)
+WHERE ((y.start >= t.start AND y.start <= t.end) OR (y.end >= t.start AND y.end <= t.end))
+  AND
+      (a2.id = 34 OR a2.id = 35 OR a2.id = 36)
 ;
 
 -- extend table with detected TM areas
 -- shows all proteins and peptides with detected TM areas in specific analysis ID's (set analysis ID's)
 -- + shows if the detected TM area was targeted by modification
+-- file name: TMAreas2
 SELECT DISTINCT t.accession, t.start, t.end,
                 y.result_id, y.sequence, y.start, y.end,
                 p2.result_id, p2.modifications, p2.position,
@@ -171,7 +176,7 @@ WHERE ((y.start >= t.start AND y.start <= t.end)
            OR
        (y.end >= t.start AND y.end <= t.end))
   AND
-      (a2.id = 33)
+      (a2.id = 34 OR a2.id = 35 OR a2.id = 36)
   AND
       p2.modifications <> ''
 ;
