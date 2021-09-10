@@ -1,3 +1,17 @@
+-- Beispiel Lorenz:
+SELECT * FROM proteins
+INNER JOIN peptides p on proteins.accession = p.accession
+where p.accession= 'cbdbA0481'
+;
+
+UPDATE result SET method = 'hcd' WHERE method = 'Proteins.txt' OR 'PeptideGroups.txt';
+--DELETE from analysis WHERE id = 38;
+
+SELECT * FROM proteins
+INNER JOIN result r on r.id = proteins.result_id
+INNER JOIN analysis a on a.id = r.analysis_id
+    WHERE analysis_id = 39;
+
 SELECT p.confidence, p.sequence, p.modifications, p.numPSMs, p.accession, p.abundance, p.xCorr, r.sample, a.date
 FROM peptides p
 INNER JOIN result r on p.result_id = r.id

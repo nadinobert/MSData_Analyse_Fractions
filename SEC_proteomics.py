@@ -7,7 +7,7 @@ import pandas as pd
 from natsort import index_natsorted
 from sqlalchemy import *
 
-engine = create_engine('sqlite:///C:/Users/hellmold/Nextcloud/ms_data.sqlite')
+engine = create_engine('sqlite:///C:/Users/hellmold/Code/MSData_Analyse_Fractions/ms_data.sqlite')
 conn = engine.connect()
 
 # data contains the joined columns and rows from db tables "proteins", "result" and "analysis" where the requested date and protein descriptions match
@@ -16,7 +16,7 @@ data = pd.read_sql_query('''SELECT * FROM
 FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
-where analysis.id = 29 AND 
+where analysis.id = 39 AND 
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
    OR description LIKE '%OmeA%'
@@ -27,15 +27,17 @@ where analysis.id = 29 AND
 WHERE abundance <> 0
 ;''', conn)
 
+print(data)
+
 # name the plot
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 29
+WHERE analysis.id = 39
 ;''', conn)
 
 plotname = titel['comment'].iloc[0]
-print(plotname)
+#print(plotname)
 
 conn.close()
 
@@ -146,8 +148,11 @@ ax.set_ylabel('intensity')
 
 # name the plot
 # name according the "comment" entry from "analysis" extracted previously when sql connection was established
-plt.title(plotname)
+plt.title(plotname, fontsize=25, y=1.05)
+
+# Adjust spacings w.r.t. figsize
+fig.tight_layout()
 
 # show the plot or save it as a .png
 plt.show()
-#plt.savefig('nadinePlot2.png')
+fig.savefig('SEC_20210803_proteomics.png')
