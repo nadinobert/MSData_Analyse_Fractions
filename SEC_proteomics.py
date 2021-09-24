@@ -16,7 +16,9 @@ data = pd.read_sql_query('''SELECT * FROM
 FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
-where analysis.id = 39 AND 
+where 
+analysis.id = 1 AND
+result.method = 'hcd' AND 
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
    OR description LIKE '%OmeA%'
@@ -27,16 +29,14 @@ where analysis.id = 39 AND
 WHERE abundance <> 0
 ;''', conn)
 
-print(data)
-
 # name the plot
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 39
+WHERE analysis.id = 1
 ;''', conn)
 
-plotname = titel['comment'].iloc[0]
+#plotname = titel['comment'].iloc[0]
 #print(plotname)
 
 conn.close()
@@ -56,14 +56,16 @@ data['colour'] = [
     else " "
     for ele in subgroup[0]]
 
-# order subplots/ experiments according to sample name
+# 1. sorting data according to color (Reihenfolge der proteingruppen im finalen plot!!)
+# 2. order subplots/ experiments according to sample name
 # "sample" entries in data gets naturally ordered and the corresponding sorting is stored in new column "order"
+data = data.sort_values('colour')
 order = np.argsort(index_natsorted(data["sample"]))
 data['order'] = order
 data = data.set_index('order')
-print(data)
+#print(data)
 data.sort_index(inplace=True)
-print(data)
+#print(data)
 
 #pd.set_option("display.max_rows", None, "display.max_columns", None)
 #print(data)
@@ -81,6 +83,7 @@ x_ticks = []
 labels = pd.Series()
 for experiment in data['sample'].unique():
     subgroup = data.loc[data['sample'] == experiment]
+    #print(subgroup)
     labels = labels.append(subgroup['accession'])
 
     # use a for loop to fill x_ticks array with positions for accession description on x-axis
@@ -94,14 +97,17 @@ for experiment in data['sample'].unique():
 
     # add text to print the subgroup name above the sub chart
     ax.text((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset, subgroup['abundance'].max() * 1.1,
-            subgroup['sample'].unique()[0])
+            subgroup['sample'].unique()[0], fontsize=14)
+
+    #ax.suptitel((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset, subgroup['abundance'].max() * 1.1,
+    #        subgroup['sample'].unique()[0])
 
     # increment offset by one (after a loop over one experiment -> defined by sample name) so there is a space free between the groups
     offset += 1
 
 # add protein accessions as label to the x-axis
 ax.set_xticks(x_ticks)
-ax.set_xticklabels(labels, rotation=70, ha='right')
+ax.set_xticklabels(labels, rotation=70, ha='right', fontsize=14)
 
 # shift the x-ticks slightly more right to align labels with ticks
 # create offset transform (x=7pt) -> shifting distance
@@ -114,7 +120,7 @@ for label in ax.xaxis.get_majorticklabels():
     label.set_transform(label.get_transform() + offset)
 
 # legend
-# create a dataframe to store all unique protein groups with short descriptor (e.g. 'hupX')
+# create a dataframe to store all unique protein groups with short descripton (e.g. 'hupX')
 # with the corresponding color
 legend = pd.DataFrame()
 legend['des'] = data['description'].str.split(' ', expand=True)[0].unique()
@@ -129,30 +135,32 @@ legend['color'] = [
     else " "
     for ele in legend['des']]
 
+legend = legend.sort_values('color')
+
 # create a empty patch list (search for 'Proxy artists' for more information on creating legend
 # https://matplotlib.org/stable/tutorials/intermediate/legend_guide.html#sphx-glr-tutorials-intermediate-legend-guide-py
 patches = []
 # iterate over the rows in the above created legend df
 for i, row in legend.iterrows():
     # append a new patch with the color and the descriptor of the row element
-    patches.append(mpatches.Patch(color=row['color'], label=row['des']))
+    patches.append(mpatches.Patch(color=row['color'], label=(row['des'][0].upper() + row['des'][1:])))
 
 # create a legend based on the patch list
-plt.legend(handles=patches, bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0.)
+plt.legend(handles=patches, bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0., fontsize=16)
 
 # add some space below the plot and to the right
 plt.subplots_adjust(bottom=0.2, right=0.9)
 
 # name axis
-ax.set_ylabel('intensity')
+ax.set_ylabel(ylabel='Intensity', fontsize=18)
 
 # name the plot
 # name according the "comment" entry from "analysis" extracted previously when sql connection was established
-plt.title(plotname, fontsize=25, y=1.05)
+plt.title('Proteomic Analysis of Collected Fractions', fontsize=25, y=1.05)
 
 # Adjust spacings w.r.t. figsize
 fig.tight_layout()
 
 # show the plot or save it as a .png
 plt.show()
-fig.savefig('SEC_20210803_proteomics.png')
+fig.savefig('SEC_LB119a.png')

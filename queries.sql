@@ -1,17 +1,40 @@
--- Beispiel Lorenz:
+ -- Beispiel Lorenz:
 SELECT * FROM proteins
 INNER JOIN peptides p on proteins.accession = p.accession
 where p.accession= 'cbdbA0481'
 ;
 
-UPDATE result SET method = 'hcd' WHERE method = 'Proteins.txt' OR 'PeptideGroups.txt';
---DELETE from analysis WHERE id = 38;
-
-SELECT * FROM proteins
+-- analyse SDS bands
+-- Select only reasonable detected proteins in gel bands -> top 3 with highest coverage, top 3 with highest abundance (<4)
+-- rank function enables to define subgroups (partition) and order subgroups by defined parameter
+SELECT * FROM (SELECT *, rank() over (
+    partition by t.result_id
+    order by t.abundance desc
+    ) AS rank FROM (SELECT proteins.result_id, proteins.accession, proteins.description, proteins.coverage, proteins.abundance, proteins.MW, r.sample
+FROM proteins
 INNER JOIN result r on r.id = proteins.result_id
 INNER JOIN analysis a on a.id = r.analysis_id
-    WHERE analysis_id = 39;
+WHERE analysis_id = 39 AND proteins.abundance <> '') AS t) AS u
+WHERE u.rank < 4 --AND
+   --(description LIKE '%rdhA%'
+    --OR description LIKE '%rdhB%'
+    --OR description LIKE '%OmeA%'
+    --OR description LIKE '%OmeB%'
+    --OR description LIKE '%hupL%'
+    --OR description LIKE '%hupS%'
+    --OR description LIKE '%hupX%')
+;
 
+
+SELECT *
+FROM proteins
+    INNER JOIN result r on proteins.result_id = r.id
+    INNER JOIN analysis a on a.id = r.analysis_id
+    WHERE analysis_id = 39 AND proteins.abundance <> '' AND r.sample = 18.6
+ORDER BY proteins.result_id, proteins.abundance DESC
+;
+
+-- Suche cbdbB003 peptide in best ansätzen
 SELECT p.confidence, p.sequence, p.modifications, p.numPSMs, p.accession, p.abundance, p.xCorr, r.sample, a.date
 FROM peptides p
 INNER JOIN result r on p.result_id = r.id
@@ -39,7 +62,6 @@ WHERE
     OR description LIKE '%hupL%'
     OR description LIKE '%hupS%'
     OR description LIKE '%hupX%')
-
 ;
 
 -- Amount of unique detected peptides/ proteins per sample (extendable to ohr-proteins only)
@@ -68,9 +90,6 @@ GROUP BY r.sample
 --    RdhB_accession TEXT
 --)
 --;
-
-SELECT * from transmembrane_areas
-WHERE organism = 'BL21';
 
 -- Insert Partner proteins (RdhA, RdhB) partner looked up at KEGG genome CBDB1
 --INSERT INTO rdhAB_Partner (RdhA_accession, RdhB_accession)

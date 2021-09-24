@@ -8,7 +8,7 @@ import re
 import os
 
 # directory where result files are stored
-directory_path = r'C:/Users/nadin/Documents/UFZ/2021 01 26 LB119a_SEC/20210208_MS_Data/'
+directory_path = r'C:/Users/hellmold/Documents/UFZ/2021 01 26 LB119a_SEC/20210208_MS_Data/'
 
 # list of proteins to check for
 ohr_proteins = ["rdhA", "omeB", "omeA", "rdhB", "hupX", "hupS", "hupL"]
