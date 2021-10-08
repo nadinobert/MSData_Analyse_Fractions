@@ -3,14 +3,7 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="C:\Users\hellmold\Nextcloud\Code\MSData_Analyse_Fractions\20210923_SEC.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="C:\Users\hellmold\Nextcloud\Experiments\Activity_Assay_GC_FID\20210923\20210923_SEC_Reactor_Effl_DBT_min.csv">
+        <entry key="C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20210923_Reactor_Effl_DBT\20210923_SEC_Reactor_Effl_DBT_min.csv">
           <value>
             <Attribute>
               <option name="separator" value=";" />
@@ -32,6 +25,20 @@
           </value>
         </entry>
         <entry key="\20210804_ReactorEff_DBT.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\20210923_SEC.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\20210928_SEC_ReactorEffl_DDM.csv">
           <value>
             <Attribute>
               <option name="separator" value=";" />
