@@ -1,30 +1,66 @@
- -- Beispiel Lorenz:
-SELECT * FROM proteins
-INNER JOIN peptides p on proteins.accession = p.accession
-where p.accession= 'cbdbA0481'
+CREATE TEMP VIEW analysis48
+AS
+   SELECT DISTINCT p.accession, r.sample, p.description
+FROM proteins p
+    INNER JOIN result r on r.id = p.result_id
+    INNER JOIN analysis a on a.id = r.analysis_id
+        WHERE analysis_id = 48 AND
+              (p.description LIKE '%rdhB%'
+                   OR p.description LIKE '%rdhA%');
+
+-- Find RdhB partner for detected RdhA proteins in Analysis 48
+SELECT sample, p.RdhA_accession, p.RdhB_accession
+FROM analysis48 a
+INNER JOIN rdhAB_Partner p ON RdhA_accession = a.accession
+        WHERE p.RdhB_accession || '&' || a.sample IN (SELECT accession || '&' || sample FROM analysis48)
 ;
 
--- analyse SDS bands
--- Select only reasonable detected proteins in gel bands -> top 3 with highest coverage, top 3 with highest abundance (<4)
--- rank function enables to define subgroups (partition) and order subgroups by defined parameter
-SELECT * FROM (SELECT *, rank() over (
-    partition by t.result_id
-    order by t.abundance desc
-    ) AS rank FROM (SELECT proteins.result_id, proteins.accession, proteins.description, proteins.coverage, proteins.abundance, proteins.MW, r.sample
+-- Find all distinct RdhA and RdhB accessions in Analysis 48 (a)
+SELECT DISTINCT proteins.accession, r.sample, proteins.abundance, proteins.description, proteins.numPeptides
 FROM proteins
-INNER JOIN result r on r.id = proteins.result_id
-INNER JOIN analysis a on a.id = r.analysis_id
-WHERE analysis_id = 39 AND proteins.abundance <> '') AS t) AS u
-WHERE u.rank < 4 --AND
-   --(description LIKE '%rdhA%'
-    --OR description LIKE '%rdhB%'
-    --OR description LIKE '%OmeA%'
-    --OR description LIKE '%OmeB%'
-    --OR description LIKE '%hupL%'
-    --OR description LIKE '%hupS%'
-    --OR description LIKE '%hupX%')
+    INNER JOIN result r on r.id = proteins.result_id
+    INNER JOIN analysis a on a.id = r.analysis_id
+    WHERE analysis_id = 48 AND
+          (proteins.description LIKE '%rdhA%')
 ;
 
+-- check if entry contains specific expression
+SELECT *
+FROM proteins p
+WHERE p.accession IN (SELECT RdhB_accession FROM rdhAB_Partner);
+
+-- analyse SDS bands Top 5
+-- Select only reasonable detected proteins in gel bands -> top 5 with highest coverage, top 5 with highest abundance (<6)
+-- rank function enables to define subgroups (partition) and order subgroups by defined parameter
+SELECT * FROM (
+    SELECT *, rank() over (
+        partition by t.result_id
+        order by t.numPeptides desc
+    ) AS rank FROM (
+        SELECT
+            proteins.result_id,
+            proteins.accession,
+            proteins.description,
+            proteins.coverage,
+            proteins.numPeptides,
+            proteins.abundance,
+            proteins.MW,
+            r.sample
+        FROM proteins
+        INNER JOIN result r on r.id = proteins.result_id
+        INNER JOIN analysis a on a.id = r.analysis_id
+        WHERE analysis_id = 48 AND proteins.abundance <> ''
+    ) AS t
+) AS u
+WHERE u.rank < 6 AND
+   (description LIKE '%rdhA%'
+    OR description LIKE '%rdhB%'
+    OR description LIKE '%OmeA%'
+    OR description LIKE '%OmeB%'
+    OR description LIKE '%hupL%'
+    OR description LIKE '%hupS%'
+    OR description LIKE '%hupX%')
+;
 
 SELECT *
 FROM proteins
@@ -34,7 +70,7 @@ FROM proteins
 ORDER BY proteins.result_id, proteins.abundance DESC
 ;
 
--- Suche cbdbB003 peptide in best ansätzen
+-- Suche cbdbB003 peptide in bestimmten ansätzen
 SELECT p.confidence, p.sequence, p.modifications, p.numPSMs, p.accession, p.abundance, p.xCorr, r.sample, a.date
 FROM peptides p
 INNER JOIN result r on p.result_id = r.id
@@ -47,21 +83,21 @@ where p.accession = 'cbdbB0003'
 ;
 
 -- overview of proteins and related peptides in database (extendable to ohr-proteins only)
-SELECT r.method, r.sample, q.description, q.accession, q.abundance, p.sequence, p.abundance, r.RdhB_accession, q.coverage
+SELECT DISTINCT q.accession, r.sample, q.description, q.abundance, p.sequence, p.abundance, r.RdhB_accession, q.coverage
 FROM proteins q
 INNER JOIN result r on r.id = q.result_id
 INNER JOIN peptides p on q.result_id = p.result_id and q.accession = p.accession
 LEFT JOIN rdhAB_Partner r on p.accession = RdhA_accession
 INNER JOIN analysis a on r.analysis_id = a.id
 WHERE
-   a.id = 11 AND
+   a.id = 48 AND
    (description LIKE '%rdhA%'
-    OR description LIKE '%rdhB%'
-    OR description LIKE '%OmeA%'
-    OR description LIKE '%OmeB%'
-    OR description LIKE '%hupL%'
-    OR description LIKE '%hupS%'
-    OR description LIKE '%hupX%')
+    OR description LIKE '%rdhB%')
+    --OR description LIKE '%OmeA%'
+    --OR description LIKE '%OmeB%'
+    --OR description LIKE '%hupL%'
+    --OR description LIKE '%hupS%'
+    --OR description LIKE '%hupX%')
 ;
 
 -- Amount of unique detected peptides/ proteins per sample (extendable to ohr-proteins only)
@@ -133,7 +169,7 @@ GROUP BY r.sample
 --WHERE RdhA_accession = 'cbdbA1503';
 
 --DELETE FROM analysis
---WHERE id = 21;
+--WHERE id = 46;
 
 -- show only proteins with CAI-accesion no
 SELECT DISTINCT accession
@@ -217,32 +253,3 @@ WHERE ((y.start >= t.start AND y.start <= t.end)
 --SELECT * FROM proteins p
 --           WHERE p.modifications <> ''
 --;
-
--- was ist das für 1 code? lol
--- extend table with detected TM areas and modification in related protein
--- shows all proteins and peptides with detected TM areas in specific analysis ID's (set analysis ID's)
--- + shows if proteins with detected TM areas got modified
-SELECT DISTINCT *, q.modifications, q.result_id, q.accession FROM
-transmembrane_areas t
-inner join
-(select x.sequence, x.result_id, x.groupId, x.accession, substr(x.pos, x.a+1, x.b-x.a-1) AS start, substr(x.pos, x.b+1, x.c-x.b-1) AS end from
-(select p.sequence, p.result_id, p.groupId, p.accession, p.position AS pos, instr(p.position, '[') AS a, instr(p.position, '-') AS b,
-        instr(p.position, ']') AS c FROM peptides p) x) y
-ON t.accession = y.accession
-
-inner join
-    result r on r.id = y.result_id
-INNER JOIN
-    proteins q on q.result_id = r.id
-    AND
-           q.accession = t.accession
-inner join
-    analysis a2 on r.analysis_id = a2.id
-WHERE ((y.start >= t.start AND y.start <= t.end)
-           OR
-       (y.end >= t.start AND y.end <= t.end))
-  AND
-      (a2.id = 2 OR a2.id = 3 OR a2.id = 22 OR a2.id = 28 OR a2.id = 30 OR a2.id = 31 OR a2.id = 32)
-  AND
-      q.modifications <> ''
-;

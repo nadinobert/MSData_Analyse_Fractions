@@ -32,13 +32,16 @@ frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
 
 y1 = df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
-df_nonull = df[df['UV2_360nm'] != 0]
+# TODO: es müssen beide fälle gleichzeitig abgedeckt werden, dass es 0 werte bei 360 und 410 gibt!
+df_nonull = df[df['UV3_410nm'] != 0]
 # get min value for UV2_360 and subtract
 y2_min = df_nonull['UV2_360nm'].min()
 y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_min)
 # get min value for UV3_410 and subtract
 y3_min = df_nonull['UV3_410nm'].min()
 y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_min)
+#print(y3)
+print(y3_min)
 
 # Create figure and subplot manually
 fig = plt.figure()

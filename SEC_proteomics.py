@@ -17,7 +17,7 @@ FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
 where 
-analysis.id = 1 AND
+analysis.id = 45 AND
 result.method = 'hcd' AND 
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
@@ -33,10 +33,10 @@ WHERE abundance <> 0
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 1
+WHERE analysis.id = 45
 ;''', conn)
 
-#plotname = titel['comment'].iloc[0]
+plotname = titel['comment'].iloc[0]
 #print(plotname)
 
 conn.close()
@@ -44,14 +44,21 @@ conn.close()
 # in data the selected, joined entries get split in the field "description" to get the accessions
 # new column 'colour" is created
 # according to the split protein description in data, a colour for each entry is defined
+
+# protein comA muss vorher rausgefiltert werden cbdbA0031
+data = data[data['accession'] != 'cbdbA0031']
+# filter für y scale range -> only proteins >10^6 intensity
+data = data[data['abundance'] > 1000000]
+
 subgroup = data['description'].str.split(' ', expand=True)
+
 data['colour'] = [
     "#FA1912" if ele == 'rdhA'
     else "#FBCA0A" if ele == 'hupX'
     else "#07B0EF" if ele == 'hupS'
     else "#1A7FC4" if ele == "hupL"
     else "#08AF57" if ele == 'omeA'
-    else "g" if ele == 'omeB'
+    else "#A0d663" if ele == 'omeB'
     else "#F57AB1" if ele == 'rdhB'
     else " "
     for ele in subgroup[0]]
@@ -63,15 +70,10 @@ data = data.sort_values('colour')
 order = np.argsort(index_natsorted(data["sample"]))
 data['order'] = order
 data = data.set_index('order')
-#print(data)
 data.sort_index(inplace=True)
-#print(data)
-
-#pd.set_option("display.max_rows", None, "display.max_columns", None)
-#print(data)
 
 # create plot figure and axis to add on the bar charts
-fig = plt.figure(figsize=(12, 8))
+fig = plt.figure(figsize=(20, 8))   #default figsize=12,8
 ax = fig.add_subplot()
 
 # iterate through the unique values of 'sample' in data
@@ -86,7 +88,7 @@ for experiment in data['sample'].unique():
     #print(subgroup)
     labels = labels.append(subgroup['accession'])
 
-    # use a for loop to fill x_ticks array with positions for accession description on x-axis
+    # use a for loop to fill x_ticks array with position number for accession description on x-axis
     # index + offset = numeric position
     for i in range(len(subgroup['accession'])):
         x_ticks.append(index + offset)
@@ -98,16 +100,12 @@ for experiment in data['sample'].unique():
     # add text to print the subgroup name above the sub chart
     ax.text((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset, subgroup['abundance'].max() * 1.1,
             subgroup['sample'].unique()[0], fontsize=14)
-
-    #ax.suptitel((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset, subgroup['abundance'].max() * 1.1,
-    #        subgroup['sample'].unique()[0])
-
     # increment offset by one (after a loop over one experiment -> defined by sample name) so there is a space free between the groups
     offset += 1
 
 # add protein accessions as label to the x-axis
 ax.set_xticks(x_ticks)
-ax.set_xticklabels(labels, rotation=70, ha='right', fontsize=14)
+ax.set_xticklabels(labels, rotation=70, ha='right', fontsize=9)     # default fontsize:14
 
 # shift the x-ticks slightly more right to align labels with ticks
 # create offset transform (x=7pt) -> shifting distance
@@ -130,7 +128,7 @@ legend['color'] = [
     else "#07B0EF" if ele == 'hupS'
     else "#1A7FC4" if ele == "hupL"
     else "#08AF57" if ele == 'omeA'
-    else "g" if ele == 'omeB'
+    else "#A0d663" if ele == 'omeB'
     else "#F57AB1" if ele == 'rdhB'
     else " "
     for ele in legend['des']]
@@ -156,7 +154,7 @@ ax.set_ylabel(ylabel='Intensity', fontsize=18)
 
 # name the plot
 # name according the "comment" entry from "analysis" extracted previously when sql connection was established
-plt.title('Proteomic Analysis of Collected Fractions', fontsize=25, y=1.05)
+#plt.title('Proteomic Analysis of Collected Fractions', fontsize=25, y=1.05)
 
 # Adjust spacings w.r.t. figsize
 fig.tight_layout()

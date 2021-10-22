@@ -3,13 +3,6 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20210923_Reactor_Effl_DBT\20210923_SEC_Reactor_Effl_DBT_min.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="\20210127_SEC_LB119.csv">
           <value>
             <Attribute>
@@ -42,6 +35,13 @@
           <value>
             <Attribute>
               <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\dumpDataPreview">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
             </Attribute>
           </value>
         </entry>
