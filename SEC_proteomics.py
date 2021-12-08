@@ -17,7 +17,7 @@ FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
 where 
-analysis.id = 45 AND
+analysis.id = 49 AND
 result.method = 'hcd' AND 
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
@@ -33,7 +33,7 @@ WHERE abundance <> 0
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 45
+WHERE analysis.id = 49
 ;''', conn)
 
 plotname = titel['comment'].iloc[0]
@@ -47,8 +47,8 @@ conn.close()
 
 # protein comA muss vorher rausgefiltert werden cbdbA0031
 data = data[data['accession'] != 'cbdbA0031']
-# filter für y scale range -> only proteins >10^6 intensity
-data = data[data['abundance'] > 1000000]
+# filter für y scale range -> only proteins >10^5 intensity
+data = data[data['abundance'] > 100000]
 
 subgroup = data['description'].str.split(' ', expand=True)
 
@@ -85,7 +85,6 @@ x_ticks = []
 labels = pd.Series()
 for experiment in data['sample'].unique():
     subgroup = data.loc[data['sample'] == experiment]
-    #print(subgroup)
     labels = labels.append(subgroup['accession'])
 
     # use a for loop to fill x_ticks array with position number for accession description on x-axis
@@ -161,4 +160,4 @@ fig.tight_layout()
 
 # show the plot or save it as a .png
 plt.show()
-fig.savefig('SEC_LB119a.png')
+fig.savefig('SEC_20211124+25.png')

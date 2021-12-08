@@ -1,18 +1,27 @@
-CREATE TEMP VIEW analysis48
+
+SELECT *
+FROM peptides t
+    INNER JOIN result r on t.result_id = r.id
+        WHERE t.accession = "cbdbA0193"
+;
+
+-- Get partner proteins RdhA und RdhB
+-- set analysis_id of interest
+CREATE TEMP VIEW analysis49
 AS
    SELECT DISTINCT p.accession, r.sample, p.description
 FROM proteins p
     INNER JOIN result r on r.id = p.result_id
     INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 48 AND
+        WHERE analysis_id = 49 AND
               (p.description LIKE '%rdhB%'
                    OR p.description LIKE '%rdhA%');
 
--- Find RdhB partner for detected RdhA proteins in Analysis 48
+-- Find RdhB partner for detected RdhA proteins in temp analysis
 SELECT sample, p.RdhA_accession, p.RdhB_accession
 FROM analysis48 a
 INNER JOIN rdhAB_Partner p ON RdhA_accession = a.accession
-        WHERE p.RdhB_accession || '&' || a.sample IN (SELECT accession || '&' || sample FROM analysis48)
+        WHERE p.RdhB_accession || '&' || a.sample IN (SELECT accession || '&' || sample FROM analysis49)
 ;
 
 -- Find all distinct RdhA and RdhB accessions in Analysis 48 (a)
@@ -35,7 +44,7 @@ WHERE p.accession IN (SELECT RdhB_accession FROM rdhAB_Partner);
 SELECT * FROM (
     SELECT *, rank() over (
         partition by t.result_id
-        order by t.numPeptides desc
+        order by t.coverage desc
     ) AS rank FROM (
         SELECT
             proteins.result_id,
@@ -49,7 +58,7 @@ SELECT * FROM (
         FROM proteins
         INNER JOIN result r on r.id = proteins.result_id
         INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 48 AND proteins.abundance <> ''
+        WHERE analysis_id = 49 AND proteins.abundance <> ''
     ) AS t
 ) AS u
 WHERE u.rank < 6 AND
@@ -66,7 +75,7 @@ SELECT *
 FROM proteins
     INNER JOIN result r on proteins.result_id = r.id
     INNER JOIN analysis a on a.id = r.analysis_id
-    WHERE analysis_id = 39 AND proteins.abundance <> '' AND r.sample = 18.6
+    WHERE analysis_id = 49 AND proteins.abundance <> '' AND r.sample = 18.6
 ORDER BY proteins.result_id, proteins.abundance DESC
 ;
 
@@ -90,14 +99,14 @@ INNER JOIN peptides p on q.result_id = p.result_id and q.accession = p.accession
 LEFT JOIN rdhAB_Partner r on p.accession = RdhA_accession
 INNER JOIN analysis a on r.analysis_id = a.id
 WHERE
-   a.id = 48 AND
+   a.id = 49 AND
    (description LIKE '%rdhA%'
-    OR description LIKE '%rdhB%')
-    --OR description LIKE '%OmeA%'
-    --OR description LIKE '%OmeB%'
-    --OR description LIKE '%hupL%'
-    --OR description LIKE '%hupS%'
-    --OR description LIKE '%hupX%')
+    OR description LIKE '%rdhB%'
+    OR description LIKE '%OmeA%'
+    OR description LIKE '%OmeB%'
+    OR description LIKE '%hupL%'
+    OR description LIKE '%hupS%'
+    OR description LIKE '%hupX%')
 ;
 
 -- Amount of unique detected peptides/ proteins per sample (extendable to ohr-proteins only)
@@ -107,15 +116,15 @@ inner join result r on r.id = q.result_id
 inner join peptides p on q.result_id = p.result_id and q.accession = p.accession
 inner join analysis a on r.analysis_id = a.id
 
---where
-   --a.date = '2021-02-08' AND
-   --(description LIKE '%rdhA%'
-   --OR description LIKE '%rdhB%'
-   --OR description LIKE '%OmeA%'
-   --OR description LIKE '%OmeB%'
-   --OR description LIKE '%hupL%'
-   --OR description LIKE '%hupS%'
-   --OR description LIKE '%hupX%')
+where
+   a.date = '2021-11-24' AND
+   (description LIKE '%rdhA%'
+   OR description LIKE '%rdhB%'
+   OR description LIKE '%OmeA%'
+   OR description LIKE '%OmeB%'
+   OR description LIKE '%hupL%'
+   OR description LIKE '%hupS%'
+   OR description LIKE '%hupX%')
 GROUP BY r.sample
 ;
 

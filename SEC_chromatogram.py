@@ -6,27 +6,31 @@ from matplotlib.transforms import ScaledTranslation
 
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20210923_Reactor_Effl_DBT\20210923_SEC_Reactor_Effl_DBT_min.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20211124_Reactor_Effl_Membrane\SEC_20211125.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t'
+
+# change the headers (3 x mAU) to unique headers for UV absorbance
+names = data.columns.tolist()
+names[1] = 'UV1_280nm'
+names[3] = 'UV2_360nm'
+names[5] = 'UV3_410nm'
+data.columns = names
+
 df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'])
 df = df.drop_duplicates(subset=['min'], keep='last').dropna()
 
-# change the headers to unique headers for UV absorbance
-#print(df)
-#print(df.set_axis(['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'], axis=1))
-
-flowrate = 0.02
-
-# parameters for the plot/ figure
-xmin = 0.8
-xmax = 2.4
-step = 0.1
-ymin = 0
-ymax = df['UV1_280nm'].max() + 5
+# parameters for plot/ figure
+flowrate = 0.5
+xmin = 7
+xmax = 22
+step = 1  # steps on x-axis
+ymin = df['UV1_280nm'].min() + 5
+#ymax = df['UV1_280nm'].max() + 5
+ymax = 120
 
 # define the different columns as plot and x values
-# elution ist die von min in elution volumen umgerechnete spalte
-# frac ist die spalte mit den gesammelten fraktionen in dem data sheet
+# "elution" ist die von "min" in elution volumen umgerechnete spalte
+# "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
 elution = df['min'].dropna().apply(lambda x: x * flowrate)
 frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
 
@@ -34,14 +38,12 @@ y1 = df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
 # TODO: es müssen beide fälle gleichzeitig abgedeckt werden, dass es 0 werte bei 360 und 410 gibt!
 df_nonull = df[df['UV3_410nm'] != 0]
-# get min value for UV2_360 and subtract
+# get min value for UV2_360 and subtract. baseline at 360 nm ~55
 y2_min = df_nonull['UV2_360nm'].min()
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_min)
-# get min value for UV3_410 and subtract
+y2 = df['UV2_360nm'].dropna().apply(lambda x: x - (y2_min + 65))
+# get min value for UV3_410 and subtract. basline at 410 nm ~80
 y3_min = df_nonull['UV3_410nm'].min()
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_min)
-#print(y3)
-print(y3_min)
+y3 = df['UV3_410nm'].dropna().apply(lambda x: x - (y3_min + 90))
 
 # Create figure and subplot manually
 fig = plt.figure()
@@ -50,15 +52,16 @@ host = fig.add_subplot(111)
 plt.title("Size Exclusion Chromatography (SEC)", fontsize=25, y=1.3)
 
 # include second, third and furth y-axis sharing the same x-axis (twinx)
-# par1 = host.twinx()
+par1 = host.twinx()
 # par2 = host.twinx()
 # par3 = host.twinx()
 
-# set x and y axis + labels
+# set x and y axis + labels + define tick size
 host.set_xlabel("Elution volume [ml]", fontsize=18)
 host.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
 host.tick_params(axis='y', labelsize=14)
-# par1.set_ylabel("Absorption at 360 nm [mAU]", fontsize=18)
+par1.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
+par1.tick_params(axis='y', labelsize=14)
 # par2.set_ylabel("Absorption at 410 nm [mAU]", fontsize=18)
 # par3.set_ylabel('Activity [%]', fontsize=18, color='grey')
 # par3.tick_params(axis='y', labelsize=14)
@@ -75,7 +78,7 @@ host.set_xlim(xmin, xmax)
 host.set_ylim(ymin, ymax)
 host2.set_xlim(xmin, xmax)
 host3.set_xlim(xmin, xmax)
-# par1.set_ylim(700, 1200)
+par1.set_ylim(0, 100)
 # par2.set_ylim(700, 1200)
 # par3.set_ylim(ymin, ymax)
 
@@ -85,7 +88,6 @@ host.tick_params(axis='x', labelsize=14)
 
 # set x2 ticks (collected fractions)
 x3 = [str(i + 1) for i in range(frac.size)]  # zählt einfach nur durch die anzahl der fractions durch
-# print(frac['min.10'].values.tolist())
 host2.xaxis.set_ticks(frac['min.10'].values.tolist())  # wo die ticks gesetzt werden
 host2.xaxis.set_ticklabels(x3)  # was an den ticks steht
 host2.tick_params(axis='x', labelsize=14)
@@ -100,13 +102,13 @@ for label in host2.xaxis.get_majorticklabels():
     label.set_transform(label.get_transform() + offset)
 
 # set x3 ticks (Molecular weight [kDa])
-# according to regression from standard run (27.07.2021) y=2.1239+1.9654*i-1.3452*i**2
+# according to regression from standard run (27.07.2021) y=-2.8799x + 6.986 !!! Ve=x in ml !!!!
 host3.xaxis.set_ticks(np.arange(xmin, xmax, step))
 # only integer in range() accepted
 array = np.arange(xmin, xmax, step)
-#x4 = [round(10 ** (i * (-2.8799) + 6.986), 1) for i in
+# x4 = [round(10 ** (i * (-2.8799) + 6.986), 1) for i in
 #      array]  # int function shows number without decimal places, round function defines decimal places
-x4 = [int(10 ** (i * (-2.8799) + 6.986)) for i in
+x4 = [int(10 ** (i * (-0.1894) + 4.6396)) for i in
       array]
 host3.xaxis.set_ticklabels(x4)
 host3.tick_params(axis='x', labelsize=14, rotation=45)
@@ -127,13 +129,19 @@ spl3 = make_interp_spline(elution.tolist(), y3, k=3)
 power_smooth3 = spl3(xnew)
 
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
-p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
-p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
+p2, = par1.plot(xnew, power_smooth2, color=color2, label="360 nm")
+p3, = par1.plot(xnew, power_smooth3, color=color3, label="410 nm")
 # par3.bar(list(map(lambda i: x2.tolist()[i - 1], frac)), act, 1, align='edge', color='grey', alpha=0.55,
 #         edgecolor="black")
 
+# TODO: get a joined legend of host and par1
 # set legend
-host.legend()
+#px = p1, + p2, + p3,
+#labs = [l.get_label() for l in px]
+#host.legend(px, labs, loc=10)
+
+host.legend(loc=2)
+par1.legend(loc=0)
 
 # set grid
 host.xaxis.grid(color='gray', linestyle='-', linewidth=0.5)
@@ -151,4 +159,4 @@ fig.tight_layout()
 # par2.yaxis.label.set_color(p3.get_color())
 
 plt.show()
-#fig.savefig('SEC_20210127_LB119.png')
+fig.savefig('SEC_20211124_DBT_Reactor.png')

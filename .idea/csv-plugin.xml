@@ -3,41 +3,6 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="\20210127_SEC_LB119.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="\20210803_ReactorEff_DBT.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="&#9;" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="\20210804_ReactorEff_DBT.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="\20210923_SEC.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="\20210928_SEC_ReactorEffl_DDM.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="\dumpDataPreview">
           <value>
             <Attribute>
