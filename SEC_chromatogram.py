@@ -4,17 +4,12 @@ import pandas as pd
 from scipy.interpolate import make_interp_spline
 from matplotlib.transforms import ScaledTranslation
 
+# TODO check if delimiter ; oder tab. ändert sich dauernd was zur hölle???
+# TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
     r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20211124_Reactor_Effl_Membrane\20211124_SEC_Reactor_Effl.csv',
-    skiprows=2, delimiter='\t')  # falls mit tabs getrennt '\t' oder';'
-
-#column 23 contains activity values
-x2 = data['Activity'].dropna()
-#print(x2)
-print(x2.item())
-x22 = x2.tolist()
-#print(x22)
+    skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
 names = data.columns.tolist()
@@ -40,6 +35,10 @@ ymax = 220
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
 elution = df['min'].dropna().apply(lambda x: x * flowrate)
 frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
+
+# define df for activity
+activity = data.iloc[:, 20:23].dropna()
+activity['frac_start'] = frac
 
 y1 = df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
@@ -139,8 +138,10 @@ power_smooth3 = spl3(xnew)
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
 p2, = par1.plot(xnew, power_smooth2, color=color2, label="360 nm")
 p3, = par1.plot(xnew, power_smooth3, color=color3, label="410 nm")
-par3.bar(list(map(lambda i: x2.tolist()[i - 1], frac)), act, 1, align='edge', color='grey', alpha=0.55,
+par3.bar(activity['frac_start'], activity['Activity [%]'], 0.5, align='edge', color='grey', alpha=0.55,
          edgecolor="black")
+#par3.bar(list(map(lambda i: x2.tolist()[i - 1], frac)), act, 1, align='edge', color='grey', alpha=0.55,
+#         edgecolor="black")
 
 # TODO: get a joined legend of host and par1
 # set legend
