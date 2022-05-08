@@ -1,8 +1,21 @@
+-- warum funktioniert die kaskade beim löschen nicht mehr? wenn in analysis oder result gelöscht wird, wird peptide und protein nicht gelöscht
 
+--DELETE FROM peptides
+--WHERE result_id = 51;
+
+-- select peptides with dimethylatet amines
 SELECT *
 FROM peptides t
     INNER JOIN result r on t.result_id = r.id
-        WHERE t.accession = "cbdbA0193"
+        WHERE t.result_id = 826 AND
+              t.masterModifications LIKE '%Dimethyl%' AND t.accession = 'cbdbA1092'--AND
+   --(description LIKE '%rdhA%'
+    --OR description LIKE '%rdhB%'
+    --OR description LIKE '%OmeA%'
+    --OR description LIKE '%OmeB%'
+    --OR description LIKE '%hupL%'
+    --OR description LIKE '%hupS%'
+    --OR description LIKE '%hupX%')
 ;
 
 -- Get partner proteins RdhA und RdhB
@@ -176,9 +189,6 @@ GROUP BY r.sample
 
 --UPDATE rdhAB_Partner SET RdhB_accession = 'cbdbA1502'
 --WHERE RdhA_accession = 'cbdbA1503';
-
---DELETE FROM analysis
---WHERE id = 46;
 
 -- show only proteins with CAI-accesion no
 SELECT DISTINCT accession

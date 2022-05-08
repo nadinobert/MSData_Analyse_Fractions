@@ -17,7 +17,7 @@ FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
 where 
-analysis.id = 49 AND
+analysis.id = 60 AND
 result.method = 'hcd' AND 
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
@@ -33,7 +33,7 @@ WHERE abundance <> 0
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 49
+WHERE analysis.id = 60
 ;''', conn)
 
 plotname = titel['comment'].iloc[0]
@@ -48,7 +48,7 @@ conn.close()
 # protein comA muss vorher rausgefiltert werden cbdbA0031
 data = data[data['accession'] != 'cbdbA0031']
 # filter für y scale range -> only proteins >10^5 intensity
-data = data[data['abundance'] > 100000]
+data = data[data['abundance'] > 10000]
 
 subgroup = data['description'].str.split(' ', expand=True)
 
