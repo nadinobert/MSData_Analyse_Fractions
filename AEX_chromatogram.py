@@ -8,10 +8,10 @@ from matplotlib.transforms import ScaledTranslation
 # TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20220428_AEX_LB147b.csv',
-    skiprows=2, delimiter='\t')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
+    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20220504_Elution.csv',
+    skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
-figure_name = '20220428_Step_Gradient'
+figure_name = '20220504_Elution'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
 names = data.columns.tolist()
@@ -27,16 +27,18 @@ df = df.drop_duplicates(subset=['min'], keep='last').dropna()
 
 # parameters for plot/ figure
 # if 2 different flow rates were used for binding and elution
-flowrate_binding = 0.3  #[ml/min]
-flowrate_elution = 0.3    # [ml/min]
+flowrate_binding = 0.5  #[ml/min]
+flowrate_elution = 0.5    # [ml/min]
+switch_bind_elution = 0  # timepoint when flow rate was changed, if not set 0
+fraction_size = 0.5
 
 xmin = 0
-xmax = 17
+xmax = 16
 step = 1 # steps on x-axis
 ymin = -10
 #ymin = df['UV1_280nm'].min() + 5
 #ymax = df['UV1_280nm'].max() + 5
-ymax = 200
+ymax = 150
 
 # "elution" ist die von "min" in elution volumen umgerechnete spalte
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
@@ -44,7 +46,7 @@ ymax = 200
 elution = []
 #print(type(elution))
 for time_point in df['min'].dropna():
-    if time_point <= 6.53:
+    if time_point <= switch_bind_elution:
         elution.append(time_point * flowrate_binding)
     else:
         elution.append(time_point * flowrate_elution)
@@ -57,27 +59,29 @@ listen = lis['min.10']
 
 #print(lis['min.10'])
 for sample_tp in listen:
-    if float(sample_tp) <= 6.53:
+    if float(sample_tp) <= switch_bind_elution:
         frac.append(sample_tp * flowrate_binding)
     else:
         frac.append(sample_tp * flowrate_elution)
-print(frac)
 
-# define df for activity (columns: u, v, w (activity, x)
+# define df for activity (columns: u, v, w (activity)
 activity = data.iloc[:, 20:23].dropna()
 activity['frac_start [ml]'] = frac
 activity.drop(activity[(activity['(Fractions)'] == 'Waste')].index, inplace=True)
 
 y1 = df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
-# TODO: es müssen beide fälle gleichzeitig abgedeckt werden, dass es 0 werte bei 360 und 410 gibt!
+# TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 df_nonull = df[df['UV3_410nm'] != 0]
-# get min value for UV2_360 and subtract. baseline at 360 nm ~55
-y2_min = df_nonull['UV2_360nm'].min()
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x - (y2_min + 5))
-# get min value for UV3_410 and subtract. basline at 410 nm ~80
-y3_min = df_nonull['UV3_410nm'].min()
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x - (y3_min + 5))
+
+#y2_min = df_nonull['UV2_360nm'].min()
+y2_start = df['UV2_360nm'][2]
+y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
+
+#y3_min= df_nonull['UV3_410nm'].min()
+y3_start = df['UV3_410nm'][2]
+y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
+
 y4 = data['%B'].dropna()
 y4_min = 0
 y4_max = 100
@@ -120,8 +124,11 @@ par4.set_ylim(y4_min, y4_max)
 host.xaxis.set_ticks(np.arange(xmin, xmax, step))
 host.tick_params(axis='x', labelsize=14)
 
-# set x2 ticks (collected fractions)
-x3 = [str(i + 1) for i in range(activity.shape[0])]  # zählt durch die anzahl der fractions in df activity durch
+# TODO: automaddisch die unnötigen fractionen aus df löschen ohne die händisch aus csv file entfernen zu müssen
+# set x2-ticks (collected fractions) -> delete useless fractions in csv file manually
+col_frac_to_list = activity['(Fractions)'].tolist()
+x3 = col_frac_to_list
+
 host2.xaxis.set_ticks(activity['frac_start [ml]'].values.tolist())  # wo die ticks gesetzt werden
 host2.xaxis.set_ticklabels(x3)  # was an den ticks steht
 host2.tick_params(axis='x', labelsize=14)
@@ -156,7 +163,7 @@ power_smooth4 = spl4(xnew)
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
 p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
 p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
-par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], 0.5, align='edge', color='red', alpha=0.3,
+par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
          edgecolor="black")
 p4, = par4.plot(xnew, power_smooth4, color=color4, label="Concentration B [%]")
 

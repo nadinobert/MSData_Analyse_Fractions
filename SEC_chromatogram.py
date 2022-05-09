@@ -8,7 +8,7 @@ from matplotlib.transforms import ScaledTranslation
 # TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20220429_SEC_wAEX_fractions\20220429_SEC_of_F6_concentratedw100k.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20220429_SEC_wAEX_fractions\20220429_SEC_of_F8_concentratedw100k.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
@@ -22,13 +22,13 @@ df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'])
 df = df.drop_duplicates(subset=['min'], keep='last').dropna()
 
 # parameters for plot/ figure
-figure_name = "20220429_SEC_F6"
-flowrate = 0.05     # [ml/min]
+figure_name = "20220429_SEC_F8"
+flowrate = 0.02     # [ml/min]
 xmin = 0
 xmax = 2.6
 step = 0.2  # steps on x-axis
-ymin = -6
-ymax = 10
+ymin = -5
+ymax = 150
 #ymin = df['UV1_280nm'].min() + 5
 #ymax = df['UV1_280nm'].max() + 5
 
@@ -38,7 +38,6 @@ ymax = 10
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
 elution = df['min'].dropna().apply(lambda x: x * flowrate)
 frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
-print(frac)
 
 # define df for activity (columns: u, v, w, x)
 activity = data.iloc[:, 20:23].dropna()
@@ -46,16 +45,17 @@ activity['frac_start [ml]'] = frac
 
 y1 = df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
-# TODO: es müssen beide fälle gleichzeitig abgedeckt werden, dass es 0 werte bei 360 und 410 gibt!
+# TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 df_nonull = df[df['UV3_410nm'] != 0]
-# get min value for UV2_360 and subtract. baseline at 360 nm ~55
-y2_min = df_nonull['UV2_360nm'].min()
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x - (y2_min + 15))
-# get min value for UV3_410 and subtract. basline at 410 nm ~80
-y3_min = df_nonull['UV3_410nm'].min()
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x - (y3_min + 40))
-print(y3)
-print(y3_min)
+
+#y2_min = df_nonull['UV2_360nm'].min()
+y2_start = df['UV2_360nm'][2]
+y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
+
+#y3_min= df_nonull['UV3_410nm'].min()
+y3_start = df['UV3_410nm'][2]
+y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
+
 
 # Create figure and subplot manually
 fig = plt.figure()
