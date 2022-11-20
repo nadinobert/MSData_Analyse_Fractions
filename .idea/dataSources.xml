@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="ms_data.sqlite" uuid="0bf3d5fc-1733-47bb-b1fd-a2251aad6372">
+    <data-source source="LOCAL" name="SQLite - ms_data.sqlite" uuid="0bf3d5fc-1733-47bb-b1fd-a2251aad6372">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/ms_data.sqlite</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <driver-properties>
+        <property name="foreign_keys" value="true" />
+      </driver-properties>
+    </data-source>
+    <data-source source="LOCAL" name="AWS DB" uuid="c83de592-1fdc-418f-b0f5-245b18b52cf0">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://nadine-phd-ms.cd6okwje2vz0.eu-central-1.rds.amazonaws.com:5432/nadine_phd_ms</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

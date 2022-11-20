@@ -1,22 +1,7 @@
 -- warum funktioniert die kaskade beim löschen nicht mehr? wenn in analysis oder result gelöscht wird, wird peptide und protein nicht gelöscht
 
---DELETE FROM peptides
---WHERE result_id = 51;
-
--- select peptides with dimethylatet amines
-SELECT *
-FROM peptides t
-    INNER JOIN result r on t.result_id = r.id
-        WHERE t.result_id = 826 AND
-              t.masterModifications LIKE '%Dimethyl%' AND t.accession = 'cbdbA1092'--AND
-   --(description LIKE '%rdhA%'
-    --OR description LIKE '%rdhB%'
-    --OR description LIKE '%OmeA%'
-    --OR description LIKE '%OmeB%'
-    --OR description LIKE '%hupL%'
-    --OR description LIKE '%hupS%'
-    --OR description LIKE '%hupX%')
-;
+--DELETE FROM analysis
+--WHERE id = 64;
 
 -- Get partner proteins RdhA und RdhB
 -- set analysis_id of interest
@@ -51,8 +36,9 @@ SELECT *
 FROM proteins p
 WHERE p.accession IN (SELECT RdhB_accession FROM rdhAB_Partner);
 
--- analyse SDS bands Top 5
--- Select only reasonable detected proteins in gel bands -> top 5 with highest coverage, top 5 with highest abundance (<6)
+-- Top 5
+-- chose order by t.x (x = desired parameter for ranking)
+-- Select only reasonable detected proteins in gel bands -> top 5 with highest coverage, number of peptides > 2,top 5 with highest abundance (<6)
 -- rank function enables to define subgroups (partition) and order subgroups by defined parameter
 SELECT * FROM (
     SELECT *, rank() over (
@@ -60,18 +46,18 @@ SELECT * FROM (
         order by t.coverage desc
     ) AS rank FROM (
         SELECT
+            r.sample,
             proteins.result_id,
             proteins.accession,
             proteins.description,
             proteins.coverage,
             proteins.numPeptides,
             proteins.abundance,
-            proteins.MW,
-            r.sample
+            proteins.MW
         FROM proteins
         INNER JOIN result r on r.id = proteins.result_id
         INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 49 AND proteins.abundance <> ''
+        WHERE analysis_id = 68 AND proteins.abundance <> '' AND proteins.numPeptides > 2
     ) AS t
 ) AS u
 WHERE u.rank < 6 AND
@@ -104,7 +90,21 @@ where p.accession = 'cbdbB0003'
     OR result_id = 82)
 ;
 
--- overview of proteins and related peptides in database (extendable to ohr-proteins only)
+-- Find approaches where aminoeptidase cbdbA1001, cbdbA1390, cbdbA1394, cbdbA0861 was detected
+-- in approaches where membrane fraction was seperated (>49)
+SELECT p.confidence, p.sequence, p.accession, p.abundance, r.sample, a.date, r.analysis_id
+FROM peptides p
+INNER JOIN result r on p.result_id = r.id
+INNER JOIN analysis a on a.id = r.analysis_id
+where (p.accession = 'cbdbA1001'
+      OR p.accession = 'cbdbA1390'
+      OR p.accession = 'cbdbA1394'
+      OR p.accession = 'cbdbA0861')
+    AND r.analysis_id >= 49
+    AND p.abundance >= 1000000
+;
+
+-- overview of proteins and related peptides in analysis (extendable to ohr-proteins only)
 SELECT DISTINCT q.accession, r.sample, q.description, q.abundance, p.sequence, p.abundance, r.RdhB_accession, q.coverage
 FROM proteins q
 INNER JOIN result r on r.id = q.result_id
@@ -112,7 +112,7 @@ INNER JOIN peptides p on q.result_id = p.result_id and q.accession = p.accession
 LEFT JOIN rdhAB_Partner r on p.accession = RdhA_accession
 INNER JOIN analysis a on r.analysis_id = a.id
 WHERE
-   a.id = 49 AND
+   a.id = 68 AND
    (description LIKE '%rdhA%'
     OR description LIKE '%rdhB%'
     OR description LIKE '%OmeA%'
@@ -122,22 +122,23 @@ WHERE
     OR description LIKE '%hupX%')
 ;
 
--- Amount of unique detected peptides/ proteins per sample (extendable to ohr-proteins only)
+-- Number of unique detected peptides/ proteins per sample respectely (extendable to ohr-proteins only)
 select a.date, a.number, r.sample, COUNT(DISTINCT q.accession) AS '#proteine', COUNT(DISTINCT p.sequence) AS '#peptide'
 from proteins q
 inner join result r on r.id = q.result_id
 inner join peptides p on q.result_id = p.result_id and q.accession = p.accession
 inner join analysis a on r.analysis_id = a.id
 
-where
-   a.date = '2021-11-24' AND
-   (description LIKE '%rdhA%'
-   OR description LIKE '%rdhB%'
-   OR description LIKE '%OmeA%'
-   OR description LIKE '%OmeB%'
-   OR description LIKE '%hupL%'
-   OR description LIKE '%hupS%'
-   OR description LIKE '%hupX%')
+WHERE
+a.id = 68
+--   AND
+--   (description LIKE '%rdhA%'
+--   OR description LIKE '%rdhB%'
+--   OR description LIKE '%OmeA%'
+--   OR description LIKE '%OmeB%'
+--   OR description LIKE '%hupL%'
+--   OR description LIKE '%hupS%'
+--   OR description LIKE '%hupX%')
 GROUP BY r.sample
 ;
 
@@ -203,8 +204,9 @@ WHERE  accession = 'CAI82388.1'
 ;
 
 -- select all detected Proteins containing TM areas in specific approach (set analysisID's)!
+-- abundance >10E5
 -- file name: TMProtein
-SELECT DISTINCT p.accession, r.sample, a.id, p.abundance, p.confidenceSample
+SELECT DISTINCT p.accession
 FROM proteins p
 INNER JOIN result r
     ON p.result_id = r.id
@@ -212,8 +214,76 @@ INNER JOIN analysis a
     on a.id = r.analysis_id
 INNER JOIN transmembrane_areas ta
     ON p.accession = ta.accession
-WHERE ((a.id = 34 OR a.id = 35 OR a.id = 36))
+WHERE a.id = 57
+  --AND abundance > 100000 AND p.abundance != ''
 ;
+
+-- select distinct proteins/ analysis
+SELECT DISTINCT p.accession
+FROM proteins p
+INNER JOIN result r on r.id = p.result_id
+INNER JOIN analysis a on a.id = r.analysis_id
+WHERE a.id = 57
+;
+
+-- selects all detected proteins without TM area
+-- --with abundance > 10E6 (set analysis ID))
+SELECT DISTINCT p.accession
+FROM proteins p
+INNER JOIN result r
+    ON p.result_id = r.id
+INNER JOIN analysis a
+    ON a.id = r.analysis_id
+LEFT JOIN transmembrane_areas ta ON p.accession = ta.accession
+WHERE a.id = 57 AND ta.accession IS NULL
+  --AND abundance > 1000000 AND p.abundance != ''
+;
+
+-- select peptides with dimethylatet/ acetylated amino acids
+SELECT * FROM
+(SELECT t.result_id, t.masterModifications, instr(t.masterModifications, '[') AS a, instr(t.masterModifications, ']') AS b
+FROM peptides t
+WHERE t.result_id = 1446
+  AND t.modifications LIKE '%Acetyl%'
+  AND t.confidence = 'High'--AND
+  --(description LIKE '%rdhA%'
+  --OR description LIKE '%rdhB%'
+  --OR description LIKE '%OmeA%'
+  --OR description LIKE '%OmeB%'
+  --OR description LIKE '%hupL%'
+  --OR description LIKE '%hupS%'
+  --OR description LIKE '%hupX%')
+    ) x
+;
+
+-- query.sql
+WITH RECURSIVE split(result_id, masterModification, str) AS (
+    SELECT result_id, '', wurm||';' FROM (
+
+       SELECT x.result_id, x.masterModifications, masterModifications as wurm FROM
+(SELECT t.result_id, t.masterModifications, instr(t.masterModifications, '[') AS a, instr(t.masterModifications, ']') AS b
+FROM peptides t
+WHERE t.result_id = 1446
+  AND t.modifications LIKE '%Acetyl%'
+  AND t.confidence = 'High'--AND
+  --(description LIKE '%rdhA%'
+  --OR description LIKE '%rdhB%'
+  --OR description LIKE '%OmeA%'
+  --OR description LIKE '%OmeB%'
+  --OR description LIKE '%hupL%'
+  --OR description LIKE '%hupS%'
+  --OR description LIKE '%hupX%')
+    ) x
+                                                        )
+    UNION ALL SELECT
+    result_id,
+    substr(str, 0, instr(str, ';')),
+    substr(str, instr(str, ';')+1)
+    FROM split WHERE str!=''
+)
+SELECT result_id, masterModification
+FROM split WHERE result_id = 1446;
+
 
 -- shows all Proteins and peptides when TM areas were detected in specific analysis ID's (set analysis ID's)
 -- file name: TMAreas
@@ -231,7 +301,7 @@ inner join
     analysis a2 on r.analysis_id = a2.id
 WHERE ((y.start >= t.start AND y.start <= t.end) OR (y.end >= t.start AND y.end <= t.end))
   AND
-      (a2.id = 34 OR a2.id = 35 OR a2.id = 36)
+      (a2.id = 59)
 ;
 
 -- extend table with detected TM areas
@@ -269,6 +339,10 @@ WHERE ((y.start >= t.start AND y.start <= t.end)
       p2.modifications <> ''
 ;
 
---SELECT * FROM proteins p
---           WHERE p.modifications <> ''
---;
+-- check all ever detected proteins for proteases
+SELECT DISTINCT p.description, r.id, r.sample, a.date, a.comment
+FROM proteins p
+INNER JOIN result r on p.result_id = r.id
+INNER JOIN analysis a on a.id = r.analysis_id
+WHERE p.description LIKE '%protease%'
+;

@@ -10,6 +10,7 @@ from sqlalchemy import *
 engine = create_engine('sqlite:///C:/Users/hellmold/Code/MSData_Analyse_Fractions/ms_data.sqlite')
 conn = engine.connect()
 
+
 # data contains the joined columns and rows from db tables "proteins", "result" and "analysis" where the requested date and protein descriptions match
 data = pd.read_sql_query('''SELECT * FROM
 (SELECT proteins.accession, CASE WHEN proteins.abundance <> '' THEN proteins.abundance ELSE 0 END AS abundance, result.sample, proteins.description
@@ -17,8 +18,7 @@ FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
 where 
-analysis.id = 60 AND
-result.method = 'hcd' AND 
+analysis.id = 74 AND
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
    OR description LIKE '%OmeA%'
@@ -29,15 +29,16 @@ result.method = 'hcd' AND
 WHERE abundance <> 0
 ;''', conn)
 
+print(data)
+
 # name the plot
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 60
+WHERE analysis.id = 74
 ;''', conn)
 
 plotname = titel['comment'].iloc[0]
-#print(plotname)
 
 conn.close()
 
@@ -47,10 +48,12 @@ conn.close()
 
 # protein comA muss vorher rausgefiltert werden cbdbA0031
 data = data[data['accession'] != 'cbdbA0031']
+
 # filter für y scale range -> only proteins >10^5 intensity
 data = data[data['abundance'] > 10000]
 
 subgroup = data['description'].str.split(' ', expand=True)
+#print(subgroup)
 
 data['colour'] = [
     "#FA1912" if ele == 'rdhA'
@@ -160,4 +163,4 @@ fig.tight_layout()
 
 # show the plot or save it as a .png
 plt.show()
-fig.savefig('SEC_20211124+25.png')
+fig.savefig('20220209 BN-PAGE extracted proteins')
