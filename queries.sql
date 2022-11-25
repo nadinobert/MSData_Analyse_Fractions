@@ -1,7 +1,7 @@
 -- warum funktioniert die kaskade beim löschen nicht mehr? wenn in analysis oder result gelöscht wird, wird peptide und protein nicht gelöscht
 
 --DELETE FROM analysis
---WHERE id = 64;
+--WHERE id = 75 OR id = 76;
 
 -- Get partner proteins RdhA und RdhB
 -- set analysis_id of interest
@@ -240,11 +240,10 @@ WHERE a.id = 57 AND ta.accession IS NULL
 ;
 
 -- select peptides with dimethylatet/ acetylated amino acids
-SELECT * FROM
-(SELECT t.result_id, t.masterModifications, instr(t.masterModifications, '[') AS a, instr(t.masterModifications, ']') AS b
+SELECT *
 FROM peptides t
-WHERE t.result_id = 1446
-  AND t.modifications LIKE '%Acetyl%'
+WHERE t.result_id = 1459
+  AND t.modifications LIKE '%Dimethyl%'
   AND t.confidence = 'High'--AND
   --(description LIKE '%rdhA%'
   --OR description LIKE '%rdhB%'
@@ -253,7 +252,7 @@ WHERE t.result_id = 1446
   --OR description LIKE '%hupL%'
   --OR description LIKE '%hupS%'
   --OR description LIKE '%hupX%')
-    ) x
+
 ;
 
 -- query.sql
@@ -263,7 +262,7 @@ WITH RECURSIVE split(result_id, masterModification, str) AS (
        SELECT x.result_id, x.masterModifications, masterModifications as wurm FROM
 (SELECT t.result_id, t.masterModifications, instr(t.masterModifications, '[') AS a, instr(t.masterModifications, ']') AS b
 FROM peptides t
-WHERE t.result_id = 1446
+WHERE t.result_id = 1447
   AND t.modifications LIKE '%Acetyl%'
   AND t.confidence = 'High'--AND
   --(description LIKE '%rdhA%'
