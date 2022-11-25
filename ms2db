@@ -1,0 +1,124 @@
+#!/bin/bash
+if [[ $# -lt 4 ]]; then
+  echo "Usage: import2Db.sh database_path, date, analyze_number, path_to_data_folder"
+  exit 0
+fi
+rm import_log.txt 2> /dev/null
+db=$1
+experiment_date=$2
+experiment_analysis=$3
+files=( "${4}/*_Proteins.txt" "${4}/*_PeptideGroups.txt" )
+if [[ ! -f "$db" ]]; then
+echo | sqlite3 <<- EOF
+.open $db
+CREATE TABLE analysis(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date date,
+  number integer,
+  comment text
+);
+CREATE UNIQUE INDEX analysis_index ON analysis(date, number);
+CREATE TABLE result(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  analysis_id integer,
+  sample varchar(15),
+  method varchar(10),
+  comment text,
+  CONSTRAINT fk_analysis
+    FOREIGN KEY(analysis_id)
+    REFERENCES analysis(id)
+    ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX result_index ON result(analysis_id, sample, method);
+CREATE TABLE proteins(
+  result_id integer,
+  puid integer,
+  checked boolean,
+  master varchar(30),
+  accession varchar(50),
+  description text,
+  coverage double,
+  markedAs varchar(50),
+  numPeptides smallint,
+  numPSMs smallint,
+  numUniquePeptides smallint,
+  AAs integer,
+  MW double,
+  pI double,
+  score double,
+  numPeptidesSearchEngine integer,
+  numRazorPeptides integer,
+  abundance double,
+  confidenceSample varchar(20),
+  numProteinGroups smallint,
+  modifications text,
+  PRIMARY KEY(result_id, accession),
+  CONSTRAINT fk_result
+    FOREIGN KEY(result_id)
+    REFERENCES result(id)
+    ON DELETE CASCADE
+);
+CREATE TABLE peptides(
+  result_id integer,
+  groupId integer,
+  checked boolean,
+  confidence varchar(15),
+  sequence varchar(100),
+  modifications varchar(200),
+  markedAs varchar(50),
+  numProteinGroups smallint,
+  numProteins smallint,
+  numPSMs smallint,
+  accession varchar(50),
+  position varchar(100),
+  masterModifications varchar(200),
+  missedCleavages smallint,
+  MHPlus double,
+  abundance double,
+  quanInfo varchar(100),
+  confidenceSample varchar(20),
+  confidenceSearchEngine varchar(20),
+  xCorr double,
+  RT double,
+  PRIMARY KEY(result_id, accession, groupId),
+  CONSTRAINT fk_proteins
+    FOREIGN KEY(result_id, accession)
+    REFERENCES proteins(result_id, accession)
+    ON DELETE CASCADE
+);
+EOF
+fi
+experiment_analysis_id=$(sqlite3 $db <<< "insert or ignore into analysis (date, number, comment) values ('${experiment_date}', ${experiment_analysis}, '${experiment_comment}'); select id from analysis where date='${experiment_date}' and number=${experiment_analysis}")
+tmp="tmp.tsv"
+tmp2="tmp2.tsv"
+for file in ${files[@]}; do
+  echo "$file"
+  if [[ -f $file ]]; then
+    echo "Processing $file ..." | tee -a import_log.txt | cat
+    filen=${file##*/}
+    experiment_sample=${filen%%_*}
+    #experiment_method=${filen#*_}
+    #experiment_method=${experiment_method%%_*}
+    experiment_result_id=$(sqlite3 $db <<< "insert or ignore into result (analysis_id, sample, method) values (${experiment_analysis_id}, '${experiment_sample}', ''); select id from result where sample='${experiment_sample}' and method=''")
+    column_3=$(head -n 1 $file | sed 's/"//g' | awk 'BEGIN {FS=OFS="\t"} {print $3}')
+    cat $file | tail -n +2 | sed 's/"//g' | awk -v a="$experiment_result_id" 'BEGIN {FS=OFS="\t"} {print a, $0}' > $tmp
+    if [[ $file == *"Protein"* ]]; then
+      table=proteins
+      echo "bimmst protein"
+      if [[ "${column_3}" == "Protein FDR Confidence: Sequest HT" ]]; then
+        mv $tmp $tmp2
+        cat $tmp2 | cut -f4,8 --complement -d$'\t' > $tmp
+      fi
+    else
+      table=peptides
+    fi
+    echo "Rows before insert: $(sqlite3 $db 'SELECT COUNT(*) FROM '$table)" | tee -a import_log.txt | cat
+    echo | sqlite3 $db 2>>import_log.txt <<- EOF
+PRAGMA foreign_keys = ON;
+.mode tabs
+.import $tmp $table
+EOF
+    echo "Rows after insert: $(sqlite3 $db 'SELECT COUNT(*) FROM '$table)" | tee -a import_log.txt | cat
+  fi
+done
+rm $tmp $tmp2 2>/dev/null
