@@ -3,87 +3,79 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import make_interp_spline
 from matplotlib.transforms import ScaledTranslation
+from functions import get_flowrate_changes, time_to_elution_volume
 
 # TODO check if delimiter ; oder tab. ändert sich dauernd was zur hölle???
 # TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
+
+activity_test = 'Dehalogenase'
+
+figure_name = '20230807_AEX'
+
+fraction_size = 1
+
+xmin = 8
+xmax = 30
+step = 5  # steps on x-axis
+ymin = -20
+# ymin = df['UV1_280nm'].min() + 5
+# ymax = df['UV1_280nm'].max() + 5
+ymax = 140
+
 # open csv file of interest but skip the first two rows
-data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20220520_AEX_LB148x.csv',
+all_data = pd.read_csv(
+    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20230807_AEX_whole_cells.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
-figure_name = '20220520 AEX step gradient 1st Run'
-
 # change the headers (3 x mAU) to unique headers for UV absorbance
-names = data.columns.tolist()
+all_data.rename(columns={'min.8': 'time_point', ' ml/min': 'flow_rate'}, inplace=True)
+
+names = all_data.columns.tolist()
+
 names[1] = 'UV1_280nm'
 names[3] = 'UV2_360nm'
 names[5] = 'UV3_410nm'
 names[11] = '%B'
 names[22] = 'Activity [%]'
-data.columns = names
+all_data.columns = names
 
-df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm', '%B'])
-df = df.drop_duplicates(subset=['min'], keep='last').dropna()
+chromatogram_df = pd.DataFrame(all_data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm', '%B'])
+chromatogram_df = chromatogram_df.drop_duplicates(subset=['min'], keep='last').dropna()
 
-# parameters for plot/ figure
-# if 2 different flow rates were used for binding and elution
-flowrate_binding = 0.1  # [ml/min]
-flowrate_elution = 0.5  # [ml/min]
-switch_bind_elution = 23.87  # timepoint when flow rate was changed, if not set 0
-fraction_size = 0.5
-
-xmin = 0
-xmax = 26
-step = 1  # steps on x-axis
-ymin = -10
-# ymin = df['UV1_280nm'].min() + 5
-# ymax = df['UV1_280nm'].max() + 5
-ymax = 200
+# df_flowrate contains timepoints and flowrate per timepoint
+# by calling get_flowrate_changes the change of flowrate is assigned to a timepoint
+flowrate_df = all_data.iloc[:, 16:18].dropna()
+flowrate_list = get_flowrate_changes(flowrate_df)
 
 # "elution" ist die von "min" in elution volumen umgerechnete spalte
+# calc elution volume for every timepoint in the experiment
+df_elution = pd.DataFrame(chromatogram_df.iloc[:, [0]].dropna())
+series_elution = df_elution['min'].dropna()
+elution = series_elution.apply(lambda x, f=flowrate_list: time_to_elution_volume(x, f))
+
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
-# elution = df['min'].dropna().apply(lambda x: x * flowrate_elution) # super coole inline lambda expression, um inplace werte umzurechnen
-elution = []
-# print(type(elution))
-for time_point in df['min'].dropna():
-    if time_point <= switch_bind_elution:
-        elution.append(time_point * flowrate_binding)
-    else:
-        elution.append(time_point * flowrate_elution)
-
-# frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate_elution)
-frac = []
-lis = data.iloc[:, [20]].dropna()
-listen = lis['min.10']
-#print(listen)
-
-# print(lis['min.10'])
-for sample_tp in listen:
-    if float(sample_tp) <= switch_bind_elution:
-        frac.append(sample_tp * flowrate_binding)
-    else:
-        frac.append(sample_tp * flowrate_elution)
+# calc elution start volume for every fraction
+df_frac = pd.DataFrame(all_data.iloc[:, [20]].dropna())
+series_frac = df_frac['min.10'].dropna()
+frac = series_frac.apply(lambda x, f=flowrate_list: time_to_elution_volume(x, f))
+print(frac)
 
 # define df for activity (columns: u, v, w (activity)
-activity = data.iloc[:, 20:23].dropna()
-activity['frac_start [ml]'] = frac
-activity.drop(activity[(activity['(Fractions)'] == 'Waste')].index, inplace=True)
-print(activity)
+activity_df = all_data.iloc[:, 20:23].dropna()
+activity_df['frac_start [ml]'] = frac
+activity_df.drop(activity_df[(activity_df['(Fractions)'] == 'Waste')].index, inplace=True)
 
-y1 = df['UV1_280nm']
+y1 = chromatogram_df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
-df_nonull = df[df['UV3_410nm'] != 0]
 
-# y2_min = df_nonull['UV2_360nm'].min()
-y2_start = df['UV2_360nm'][2]
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
+y2_start = chromatogram_df['UV2_360nm'][3]
+y2 = chromatogram_df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
 
-# y3_min= df_nonull['UV3_410nm'].min()
-y3_start = df['UV3_410nm'][2]
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
+y3_start = chromatogram_df['UV3_410nm'][3]
+y3 = chromatogram_df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
 
-y4 = data['%B'].dropna()
+y4 = all_data['%B'].dropna()
 y4_min = 0
 y4_max = 100
 
@@ -105,7 +97,10 @@ host.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
 host.tick_params(axis='y', labelsize=14)
 # par1.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
 # par1.tick_params(axis='y', labelsize=14)
-par3.set_ylabel('Activity [%]', fontsize=18, color='red')
+if activity_test == "Dehalogenase":
+    par3.set_ylabel('Dehalogenase Activity [%]', fontsize=18, color='red')
+if activity_test == "Hydrogenase":
+    par3.set_ylabel('Hydrogenase Activity [%]', fontsize=18, color='blue')
 par3.tick_params(axis='y', labelsize=14)
 par4.set_ylabel('Concentration B [%]', fontsize=18, color='black')
 par4.tick_params(axis='y', labelsize=14)
@@ -127,10 +122,10 @@ host.tick_params(axis='x', labelsize=14)
 
 # TODO: automaddisch die unnötigen fractionen aus df löschen ohne die händisch aus csv file entfernen zu müssen
 # set x2-ticks (collected fractions) -> delete useless fractions in csv file manually
-col_frac_to_list = activity['(Fractions)'].tolist()
+col_frac_to_list = activity_df['(Fractions)'].tolist()
 x3 = col_frac_to_list
 
-host2.xaxis.set_ticks(activity['frac_start [ml]'].values.tolist())  # wo die ticks gesetzt werden
+host2.xaxis.set_ticks(activity_df['frac_start [ml]'].values.tolist())  # wo die ticks gesetzt werden
 host2.xaxis.set_ticklabels(x3)  # was an den ticks steht
 host2.tick_params(axis='x', labelsize=14)
 host2.set_xlim(xmin, xmax)  # needs to be repeated here?! otherwise out of range
@@ -164,8 +159,12 @@ power_smooth4 = spl4(xnew)
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
 p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
 p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
-par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
-         edgecolor="black")
+if activity_test == 'Dehalogenase':
+    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
+             edgecolor="black")
+if activity_test == 'Hydrogenase':
+    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]'], fraction_size, align='edge', color='blue', alpha=0.3,
+             edgecolor="black")
 p4, = par4.plot(xnew, power_smooth4, color=color4, label="Concentration B [%]")
 
 # TODO: get a joined legend of host and par1
