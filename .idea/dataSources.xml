@@ -11,11 +11,23 @@
         <property name="foreign_keys" value="true" />
       </driver-properties>
     </data-source>
-    <data-source source="LOCAL" name="AWS DB" uuid="c83de592-1fdc-418f-b0f5-245b18b52cf0">
+    <data-source source="LOCAL" name="ppiichannel" uuid="a5510a5c-a6ae-4495-9a21-5ddfeafbce2e">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\hellmold\Code\MSData_Analyse_Fractions\ppiichannel.db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.39.2/sqlite-jdbc-3.39.2.jar</url>
+        </library>
+      </libraries>
+    </data-source>
+    <data-source source="LOCAL" name="W.U.R.M." uuid="b54dff6c-d43a-426e-9d91-cb0f290b82d9">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://nadine-phd-ms.cd6okwje2vz0.eu-central-1.rds.amazonaws.com:5432/nadine_phd_ms</jdbc-url>
+      <jdbc-url>jdbc:postgresql://postgres.intranet.ufz.de:5432/mass_spectrometry_proteomics_data</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

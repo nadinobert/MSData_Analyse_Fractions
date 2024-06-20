@@ -7,31 +7,33 @@ from functions import get_flowrate_changes, time_to_elution_volume
 
 # TODO check if delimiter ; oder tab. ändert sich dauernd was zur hölle???
 # TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
+# TODO zwei spalten für aktivitätstest in das csv file einfügen
+# TODO in df elution ergeben sich doppelte werte die dann nicht geplottet werden können!!! ganz schlecht!! rundungsproblem bei berechnung
 
 activity_test = 'Dehalogenase'
 
-figure_name = '20230807_AEX'
+figure_name = '20240111_AEX_Digitonin'
 
 fraction_size = 1
 
-xmin = 8
+xmin = 0
 xmax = 30
 step = 5  # steps on x-axis
-ymin = -20
+ymin = -2
+
 # ymin = df['UV1_280nm'].min() + 5
 # ymax = df['UV1_280nm'].max() + 5
-ymax = 140
+ymax = 50
 
 # open csv file of interest but skip the first two rows
 all_data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20230807_AEX_whole_cells.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20240111_AEX_Digitonin.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
 all_data.rename(columns={'min.8': 'time_point', ' ml/min': 'flow_rate'}, inplace=True)
 
 names = all_data.columns.tolist()
-
 names[1] = 'UV1_280nm'
 names[3] = 'UV2_360nm'
 names[5] = 'UV3_410nm'
@@ -45,7 +47,9 @@ chromatogram_df = chromatogram_df.drop_duplicates(subset=['min'], keep='last').d
 # df_flowrate contains timepoints and flowrate per timepoint
 # by calling get_flowrate_changes the change of flowrate is assigned to a timepoint
 flowrate_df = all_data.iloc[:, 16:18].dropna()
-flowrate_list = get_flowrate_changes(flowrate_df)
+flowrate_list_not_filtered = get_flowrate_changes(flowrate_df)
+flowrate_list = [row for row in flowrate_list_not_filtered if row[1] != 0.0] ## hier müssen die flow rate = 0 einträge gelöscht werden, da ansonsten doppelte werte entstehen
+print(flowrate_list)
 
 # "elution" ist die von "min" in elution volumen umgerechnete spalte
 # calc elution volume for every timepoint in the experiment
@@ -146,7 +150,7 @@ color3 = 'grey'
 color4 = 'black'
 
 # power_smooth einleiten um plot smooth zu machen und so
-xnew = np.linspace(min(elution), max(elution), 912)
+xnew = np.linspace(min(elution), max(elution), 910)
 spl1 = make_interp_spline(elution, y1, k=3)
 power_smooth1 = spl1(xnew)
 spl2 = make_interp_spline(elution, y2, k=3)

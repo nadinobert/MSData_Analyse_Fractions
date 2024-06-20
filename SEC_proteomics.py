@@ -13,12 +13,12 @@ conn = engine.connect()
 
 # data contains the joined columns and rows from db tables "proteins", "result" and "analysis" where the requested date and protein descriptions match
 data = pd.read_sql_query('''SELECT * FROM
-(SELECT proteins.accession, CASE WHEN proteins.abundance <> '' THEN proteins.abundance ELSE 0 END AS abundance, result.sample, proteins.description
+(SELECT proteins.accession, CASE WHEN proteins.abundance <> '' THEN proteins.abundance ELSE 0 END AS abundance, result.sample, proteins.description, proteins.numPeptides
 FROM proteins
 inner join result on result.id = proteins.result_id
 inner join analysis on analysis.id = result.analysis_id
 where 
-analysis.id = 74 AND
+analysis.id = 93 AND
 (description LIKE '%rdhA%'
    OR description LIKE '%rdhB%'
    OR description LIKE '%OmeA%'
@@ -35,7 +35,7 @@ print(data)
 # plot should be named after "comment"- entry in "analysis" table
 titel = pd.read_sql_query('''
 SELECT * FROM analysis
-WHERE analysis.id = 74
+WHERE analysis.id = 93
 ;''', conn)
 
 plotname = titel['comment'].iloc[0]
@@ -50,7 +50,9 @@ conn.close()
 data = data[data['accession'] != 'cbdbA0031']
 
 # filter für y scale range -> only proteins >10^5 intensity
-data = data[data['abundance'] > 10000]
+data = data[data['abundance'] > 100000]
+#filter for proteins with min 2 peptides detected
+data = data[data['numPeptides'] > 0]
 
 subgroup = data['description'].str.split(' ', expand=True)
 #print(subgroup)
@@ -163,4 +165,4 @@ fig.tight_layout()
 
 # show the plot or save it as a .png
 plt.show()
-fig.savefig('20220209 BN-PAGE extracted proteins')
+fig.savefig('20231218_Insolution')

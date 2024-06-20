@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-result_id=1502
+result_id=1565
 type=Acetyl
 filter="AND (description LIKE '%rdhA%' OR description LIKE '%rdhB%' OR description LIKE '%OmeA%' OR description LIKE '%OmeB%' OR description LIKE '%hupL%' OR description LIKE '%hupS%' OR description LIKE '%hupX%')"
 filter=""

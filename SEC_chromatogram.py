@@ -5,10 +5,10 @@ from scipy.interpolate import make_interp_spline
 from matplotlib.transforms import ScaledTranslation
 
 # TODO check if delimiter ; oder tab. ändert sich dauernd was zur hölle???
-# TODO es muss aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
+# TODO es soll aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20220802_SEC_DDM\20220802_SEC_Membrane_DDM.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\Neuer Ordner\20240402_SEC_DDM_BV.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
@@ -22,16 +22,17 @@ df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'])
 df = df.drop_duplicates(subset=['min'], keep='last').dropna()
 
 # parameters for plot/ figure
-figure_name = "20220802_SEC_DDM"
-flowrate = 0.25  # [ml/min]
-xmin = 8
-xmax = 23
-step = 2  # steps on x-axis
-ymin = -2.5
-ymax = 15
+figure_name = "20240402_SEC_DDM_BV"
+flowrate = 0.3  # [ml/min]
+xmin = 6
+xmax = 25
+step = 1  # steps on x-axis
+ymin = -5
+ymax = 100
 fraction_size = 0.5
-# ymin = df['UV1_280nm'].min() + 5
-# ymax = df['UV1_280nm'].max() + 5
+
+column_type = "big"             #small or big
+activity_test = "Hydrogenase"  #Dehalogenase, Hydrogenase
 
 
 # define the different columns as plot and x values
@@ -39,25 +40,25 @@ fraction_size = 0.5
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
 elution = df['min'].dropna().apply(lambda x: x * flowrate)
 frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
-print(frac)
 
 # define df for activity (columns: u, v, w, x)
 activity = data.iloc[:, 20:23].dropna()
 activity.columns = ["min", "Fractions", "Activity [%]"]
 activity['frac_start [ml]'] = frac
 
-y1 = df['UV1_280nm'].dropna().apply(lambda x: x + 0)
+y1 = df['UV1_280nm'].dropna().apply(lambda x: x + 10)
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 df_nonull = df[df['UV3_410nm'] != 0]
 
 # y2_min = df_nonull['UV2_360nm'].min()
-y2_start = df['UV2_360nm'][2]
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_start + 5)
+y2_start = df['UV2_360nm'][5]
+y2 = df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
+print(y2)
 
 # y3_min= df_nonull['UV3_410nm'].min()
-y3_start = df['UV3_410nm'][2]
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_start + 5)
+y3_start = df['UV3_410nm'][5]
+y3 = df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
 
 # Create figure and subplot manually
 fig = plt.figure()
@@ -77,7 +78,11 @@ host.tick_params(axis='y', labelsize=14)
 # par1.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
 # par1.tick_params(axis='y', labelsize=14)
 # par2.set_ylabel("Absorption at 410 nm [mAU]", fontsize=18)
-par3.set_ylabel('Activity [%]', fontsize=18, color='red')
+if activity_test == "Dehalogenase":
+    par3.set_ylabel('Dehalogenase Activity [%]', fontsize=18, color='red')
+if activity_test == "Hydrogenase":
+    par3.set_ylabel('Hydrogenase Activity [%]', fontsize=18, color='blue')
+par3.tick_params(axis='y', labelsize=14)
 par3.tick_params(axis='y', labelsize=14)
 
 # add a second x-axis
@@ -122,12 +127,15 @@ host3.xaxis.set_ticks(np.arange(xmin, xmax, step))
 array = np.arange(xmin, xmax, step)
 
 # calculate molecular sizes according to regression from standard run (27.07.2021) y=-2.8799x + 6.986 !!! Ve=x in ml !!!!
-# small column
-# x4 = [round(10 ** ((i/1.42) * (-6.1891) + 9.4435)) for i in array]  # int function shows number without decimal places, round function defines decimal places
-# big column
-#x4 = [int(10 ** (i * (-0.1894) + 4.6396)) for i in array]
-#big column 20220720 approach
-x4 = [int(10 ** (i * (-0.1304) + 3.9103)) for i in array]
+if column_type == "small":
+    # small column calibration 20210723
+    #x4 = [round(10 ** ((i/1.42) * (-6.1891) + 9.4435)) for i in array]  # int function shows number without decimal places, round function defines decimal places
+    x4 = [round(10 ** ((i/1.07) * (-1.6859) + 4.4949)) for i in array]
+if column_type == "big":
+    #big column approach 20230109 Schebnem
+    ##x4 = [int(10 ** (i * (-0.1875) + 4.4974)) for i in array]
+    #big column approach 20231204 Digitonin
+    x4 = [int(10 ** (i * (-0.1894) + 4.6396)) for i in array]
 
 host3.xaxis.set_ticklabels(x4)
 host3.tick_params(axis='x', labelsize=14, rotation=45)
@@ -149,8 +157,14 @@ power_smooth3 = spl3(xnew)
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
 p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
 p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
-par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
-         edgecolor="black")
+if activity_test == 'Dehalogenase':
+    par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
+             edgecolor="black")
+if activity_test == 'Hydrogenase':
+    par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='blue', alpha=0.3,
+             edgecolor="black")
+#par3.bar(activity['frac_start [ml]'], activity['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
+#         edgecolor="black")
 # par3.bar(list(map(lambda i: x2.tolist()[i - 1], frac)), act, 1, align='edge', color='grey', alpha=0.55,
 #         edgecolor="black")
 

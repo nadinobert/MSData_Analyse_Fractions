@@ -1,7 +1,7 @@
 -- warum funktioniert die kaskade beim löschen nicht mehr? wenn in analysis oder result gelöscht wird, wird peptide und protein nicht gelöscht
 
 --DELETE FROM analysis
---WHERE id = 75 OR id = 76;
+--WHERE id = 96;
 
 -- Get partner proteins RdhA und RdhB
 -- set analysis_id of interest
@@ -36,14 +36,26 @@ SELECT *
 FROM proteins p
 WHERE p.accession IN (SELECT RdhB_accession FROM rdhAB_Partner);
 
--- Top 5
+-- all proteins from a certain analysis wo contaminants
+SELECT *
+FROM proteins p
+    INNER JOIN result r on r.id = p.result_id
+    INNER JOIN analysis a on r.analysis_id = a.id
+    WHERE analysis_id = 92 AND
+          p.accession LIKE '%cbdbA%'
+;
+
+
+-- Top x proteins
+-- wo contaminants
 -- chose order by t.x (x = desired parameter for ranking)
--- Select only reasonable detected proteins in gel bands -> top 5 with highest coverage, number of peptides > 2,top 5 with highest abundance (<6)
+-- Select only reasonable detected proteins in sample -> top x with highest coverage, number of peptides > x, abundance > x
 -- rank function enables to define subgroups (partition) and order subgroups by defined parameter
+-- only cbdbA238 listed
 SELECT * FROM (
     SELECT *, rank() over (
         partition by t.result_id
-        order by t.coverage desc
+        order by t.abundance desc
     ) AS rank FROM (
         SELECT
             r.sample,
@@ -57,24 +69,43 @@ SELECT * FROM (
         FROM proteins
         INNER JOIN result r on r.id = proteins.result_id
         INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 68 AND proteins.abundance <> '' AND proteins.numPeptides > 2
+        WHERE analysis_id = 93 AND accession LIKE '%cbdbA%' AND proteins.abundance <> '' AND proteins.numPeptides > 2 --AND proteins.abundance > 1000000
     ) AS t
 ) AS u
-WHERE u.rank < 6 AND
-   (description LIKE '%rdhA%'
-    OR description LIKE '%rdhB%'
-    OR description LIKE '%OmeA%'
-    OR description LIKE '%OmeB%'
-    OR description LIKE '%hupL%'
-    OR description LIKE '%hupS%'
-    OR description LIKE '%hupX%')
+WHERE u.rank < 11 --AND
+   --(description LIKE '%rdhA%' --AND accession = 'cbdbA0238')
+    --OR description LIKE '%rdhB%'
+    --OR description LIKE '%OmeA%'
+    --OR description LIKE '%OmeB%'
+    --OR description LIKE '%hupL%'
+    --OR description LIKE '%hupS%'
+    --OR description LIKE '%hupX%')
 ;
 
+--Find all (OHR) protein in a specific analysis
+--wo contaminants
 SELECT *
 FROM proteins
     INNER JOIN result r on proteins.result_id = r.id
     INNER JOIN analysis a on a.id = r.analysis_id
-    WHERE analysis_id = 49 AND proteins.abundance <> '' AND r.sample = 18.6
+    WHERE analysis_id = 84 AND
+          proteins.abundance <> '' --AND
+          --proteins.markedAs = 'False'--AND
+             --(description LIKE '%rdhA%'
+        --OR description LIKE '%rdhB%'
+        --OR description LIKE '%OmeA%'
+        --OR description LIKE '%OmeB%'
+        --OR description LIKE '%hupL%'
+        --OR description LIKE '%hupS%'
+        --OR description LIKE '%hupX%')
+ORDER BY proteins.result_id, proteins.abundance DESC
+;
+--check a set of results for contaminants -> "marked as" '' (nothing) or markedAs True
+SELECT *
+FROM proteins
+    INNER JOIN result r on proteins.result_id = r.id
+    INNER JOIN analysis a on a.id = r.analysis_id
+    WHERE analysis_id = 85 AND proteins.markedAs = 'False'
 ORDER BY proteins.result_id, proteins.abundance DESC
 ;
 
@@ -104,6 +135,16 @@ where (p.accession = 'cbdbA1001'
     AND p.abundance >= 1000000
 ;
 
+-- Find samples in one analysis where Keratin was detected
+SELECT DISTINCT *
+FROM proteins p
+INNER JOIN result r on p.result_id = r.id
+INNER JOIN analysis a on a.id = r.analysis_id
+where (p.description LIKE '%Keratin%'
+    OR p.description LIKE '%KERATIN%')
+    AND r.analysis_id = 91
+;
+
 -- overview of proteins and related peptides in analysis (extendable to ohr-proteins only)
 SELECT DISTINCT q.accession, r.sample, q.description, q.abundance, p.sequence, p.abundance, r.RdhB_accession, q.coverage
 FROM proteins q
@@ -112,7 +153,7 @@ INNER JOIN peptides p on q.result_id = p.result_id and q.accession = p.accession
 LEFT JOIN rdhAB_Partner r on p.accession = RdhA_accession
 INNER JOIN analysis a on r.analysis_id = a.id
 WHERE
-   a.id = 68 AND
+   a.id = 83 AND
    (description LIKE '%rdhA%'
     OR description LIKE '%rdhB%'
     OR description LIKE '%OmeA%'
@@ -218,12 +259,12 @@ WHERE a.id = 57
   --AND abundance > 100000 AND p.abundance != ''
 ;
 
--- select distinct proteins/ analysis
+-- select distinct proteins in certain analysis
 SELECT DISTINCT p.accession
 FROM proteins p
 INNER JOIN result r on r.id = p.result_id
 INNER JOIN analysis a on a.id = r.analysis_id
-WHERE a.id = 57
+WHERE a.id = 85
 ;
 
 -- selects all detected proteins without TM area
@@ -239,12 +280,63 @@ WHERE a.id = 57 AND ta.accession IS NULL
   --AND abundance > 1000000 AND p.abundance != ''
 ;
 
+-- selects all detected proteins with TM area
+-- no contaminants
+-- (with abundance > 10E6)
+-- set analysis ID
+SELECT DISTINCT p.accession
+FROM proteins p
+INNER JOIN result r
+    ON p.result_id = r.id
+INNER JOIN analysis a
+    ON a.id = r.analysis_id
+LEFT JOIN transmembrane_areas ta ON p.accession = ta.accession
+WHERE a.id = 84
+  AND ta.accession IS NOT NULL
+  AND p.accession LIKE '%cbdbA%'
+  --AND abundance > 1000000 AND p.abundance != ''
+;
+
+-- selects all detected proteins with TM area
+-- under the top 10 coverage/abundance/unique peptides ect per analysis
+-- rank function enables to define subgroups (partition) and order subgroups by defined parameter
+-- order by abundance, coverage or amount of peptides
+-- no contaminants
+-- $
+SELECT DISTINCT * FROM (
+    SELECT *, rank() over (
+        partition by t.result_id
+        order by t.abundance desc
+    ) AS rank FROM (
+        SELECT
+            r.sample,
+            proteins.result_id,
+            proteins.accession,
+            proteins.description,
+            proteins.coverage,
+            proteins.numPeptides,
+            proteins.abundance,
+            proteins.MW
+        FROM proteins
+        INNER JOIN result r on r.id = proteins.result_id
+        INNER JOIN analysis a on a.id = r.analysis_id
+        LEFT JOIN transmembrane_areas ta ON proteins.accession = ta.accession
+WHERE a.id = 92
+    AND ta.accession IS NOT NULL
+    --AND proteins.accession LIKE '%cbdbA%'
+    AND proteins.abundance > 100000 AND proteins.numPeptides > 2
+    ) AS t
+) AS u
+WHERE u.rank < 11
+;
+
+
 -- select peptides with dimethylatet/ acetylated amino acids
 SELECT *
 FROM peptides t
-WHERE t.result_id = 1459
-  AND t.modifications LIKE '%Dimethyl%'
-  AND t.confidence = 'High'--AND
+WHERE t.result_id = 1546
+  AND t.modifications LIKE '%Acetyl%'
+  --AND t.confidence = 'High'--AND
   --(description LIKE '%rdhA%'
   --OR description LIKE '%rdhB%'
   --OR description LIKE '%OmeA%'
@@ -303,10 +395,11 @@ WHERE ((y.start >= t.start AND y.start <= t.end) OR (y.end >= t.start AND y.end 
       (a2.id = 59)
 ;
 
+
 -- extend table with detected TM areas
 -- shows all proteins and peptides with detected TM areas in specific analysis ID's (set analysis ID's)
 -- + shows if the detected TM area was targeted by modification
--- file name: TMAreas2
+-- file to save for marie name: TMAreas2
 SELECT DISTINCT t.accession, t.start, t.end,
                 y.result_id, y.sequence, y.start, y.end,
                 p2.result_id, p2.modifications, p2.position,
@@ -345,3 +438,9 @@ INNER JOIN result r on p.result_id = r.id
 INNER JOIN analysis a on a.id = r.analysis_id
 WHERE p.description LIKE '%protease%'
 ;
+
+-- shows if if peptides from a certain protein were detected over all trials
+-- file name: TMAreas
+select * from
+peptides p
+WHERE p.accession = 'cbdbA1690'
