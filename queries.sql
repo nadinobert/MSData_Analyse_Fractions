@@ -41,15 +41,22 @@ SELECT *
 FROM proteins p
     INNER JOIN result r on r.id = p.result_id
     INNER JOIN analysis a on r.analysis_id = a.id
-    WHERE analysis_id = 92 AND
-          p.accession LIKE '%cbdbA%'
+    WHERE analysis_id = 94 AND
+          p.accession LIKE '%cbdbA%' AND
+   (description LIKE '%rdhA%' --AND accession = 'cbdbA0238')
+    OR description LIKE '%rdhB%'
+    OR description LIKE '%OmeA%'
+    OR description LIKE '%OmeB%'
+    OR description LIKE '%hupL%'
+    OR description LIKE '%hupS%'
+    OR description LIKE '%hupX%')
 ;
 
 
 -- Top x proteins
 -- wo contaminants
 -- chose order by t.x (x = desired parameter for ranking)
--- Select only reasonable detected proteins in sample -> top x with highest coverage, number of peptides > x, abundance > x
+-- Select only reasonable detected proteins in sample -> top x with highest coverage, number of unique peptides > x, abundance > x
 -- rank function enables to define subgroups (partition) and order subgroups by defined parameter
 -- only cbdbA238 listed
 SELECT * FROM (
@@ -62,14 +69,19 @@ SELECT * FROM (
             proteins.result_id,
             proteins.accession,
             proteins.description,
-            proteins.coverage,
-            proteins.numPeptides,
+            --proteins.coverage,
+            --proteins.numPeptides,
             proteins.abundance,
-            proteins.MW
+            proteins.MW,
+            proteins.numUniquePeptides
         FROM proteins
         INNER JOIN result r on r.id = proteins.result_id
         INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 93 AND accession LIKE '%cbdbA%' AND proteins.abundance <> '' AND proteins.numPeptides > 2 --AND proteins.abundance > 1000000
+        WHERE analysis_id = 70 AND
+              accession LIKE '%cbdbA%' AND
+              proteins.abundance <> '' AND
+              proteins.numUniquePeptides >= 2 AND
+              proteins.abundance > 100000
     ) AS t
 ) AS u
 WHERE u.rank < 11 --AND
@@ -264,7 +276,7 @@ SELECT DISTINCT p.accession
 FROM proteins p
 INNER JOIN result r on r.id = p.result_id
 INNER JOIN analysis a on a.id = r.analysis_id
-WHERE a.id = 85
+WHERE a.id = 94
 ;
 
 -- selects all detected proteins without TM area

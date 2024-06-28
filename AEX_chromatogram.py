@@ -10,14 +10,19 @@ from functions import get_flowrate_changes, time_to_elution_volume
 # TODO zwei spalten für aktivitätstest in das csv file einfügen
 # TODO in df elution ergeben sich doppelte werte die dann nicht geplottet werden können!!! ganz schlecht!! rundungsproblem bei berechnung
 
+# Set plot font globally to Times New Roman and set globally font size to 20
+# locally set fontsize will overwrite globally defined setting!
+plt.rcParams.update({'font.family': 'Times New Roman'})
+
+
 activity_test = 'Dehalogenase'
 
-figure_name = '20240111_AEX_Digitonin'
+figure_name = '20220421_AEX_detergent_exchange'
 
 fraction_size = 1
 
 xmin = 0
-xmax = 30
+xmax = 50
 step = 5  # steps on x-axis
 ymin = -2
 
@@ -27,7 +32,7 @@ ymax = 50
 
 # open csv file of interest but skip the first two rows
 all_data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20240111_AEX_Digitonin.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20220421_AEX_LB143b\20220421_LB143b_detergent_exchange.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
 # change the headers (3 x mAU) to unique headers for UV absorbance

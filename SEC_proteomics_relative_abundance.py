@@ -13,22 +13,32 @@ conn = engine.connect()
 
 
 # data contains the joined columns and rows from db tables "proteins", "result" and "analysis" where the requested date and protein descriptions match
-data = pd.read_sql_query('''SELECT * FROM
-(SELECT proteins.accession, CASE WHEN proteins.abundance <> '' THEN proteins.abundance ELSE 0 END AS abundance, result.sample, proteins.description, proteins.numPeptides
-FROM proteins
-inner join result on result.id = proteins.result_id
-inner join analysis on analysis.id = result.analysis_id
-where 
-analysis.id = 93 AND
-(description LIKE '%rdhA%'
-   OR description LIKE '%rdhB%'
-   OR description LIKE '%OmeA%'
-   OR description LIKE '%OmeB%'
-   OR description LIKE '%hupL%'
-   OR description LIKE '%hupX%'
-   OR description LIKE '%hupS%'))
-WHERE abundance <> 0
-;''', conn)
+data = pd.read_sql_query('''
+    SELECT * FROM (
+        SELECT 
+            proteins.accession, 
+            CASE WHEN proteins.abundance <> '' THEN CAST(proteins.abundance AS FLOAT) ELSE 0 END AS abundance, 
+            result.sample, 
+            proteins.description, 
+            proteins.numPeptides
+        FROM proteins
+        INNER JOIN result ON result.id = proteins.result_id
+        INNER JOIN analysis ON analysis.id = result.analysis_id
+        WHERE 
+            analysis.id = 93 AND
+            (
+                (description LIKE '%rdhA%' AND proteins.accession = 'cbdbA0238') OR
+                description LIKE '%rdhB%' OR
+                description LIKE '%OmeA%' OR
+                description LIKE '%OmeB%' OR
+                description LIKE '%hupL%' OR
+                description LIKE '%hupS%' OR
+                description LIKE '%hupX%'
+            )
+    ) AS subquery
+    WHERE abundance <> 0
+''', conn)
+
 
 # name the plot
 # plot should be named after "comment"- entry in "analysis" table

@@ -6,9 +6,14 @@ from matplotlib.transforms import ScaledTranslation
 
 # TODO check if delimiter ; oder tab. ändert sich dauernd was zur hölle???
 # TODO es soll aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
+
+# Set plot font globally to Times New Roman and set globally font size to 20
+# locally set fontsize will overwrite globally defined setting!
+plt.rcParams.update({'font.family': 'Times New Roman'})
+
 # open csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\Neuer Ordner\20240402_SEC_DDM_BV.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20240123_SEC_Digitonin\20240123_SEC_Digitonin.csv',
     skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
@@ -22,17 +27,17 @@ df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'])
 df = df.drop_duplicates(subset=['min'], keep='last').dropna()
 
 # parameters for plot/ figure
-figure_name = "20240402_SEC_DDM_BV"
-flowrate = 0.3  # [ml/min]
+figure_name = "20240123_SEC_Digitonin"
+flowrate = 0.4  # [ml/min]
 xmin = 6
-xmax = 25
-step = 1  # steps on x-axis
-ymin = -5
+xmax = 24
+step = 2  # steps on x-axis
+ymin = -4
 ymax = 100
-fraction_size = 0.5
+fraction_size = 1
 
 column_type = "big"             #small or big
-activity_test = "Hydrogenase"  #Dehalogenase, Hydrogenase
+activity_test = "Dehalogenase"  #Dehalogenase, Hydrogenase
 
 
 # define the different columns as plot and x values
@@ -46,7 +51,7 @@ activity = data.iloc[:, 20:23].dropna()
 activity.columns = ["min", "Fractions", "Activity [%]"]
 activity['frac_start [ml]'] = frac
 
-y1 = df['UV1_280nm'].dropna().apply(lambda x: x + 10)
+y1 = df['UV1_280nm'].dropna().apply(lambda x: x + 2)
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 df_nonull = df[df['UV3_410nm'] != 0]
