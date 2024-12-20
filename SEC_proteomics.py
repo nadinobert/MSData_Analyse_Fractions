@@ -13,18 +13,18 @@ conn = engine.connect()
 
 # Set plot font globally to Times New Roman and set globally font size to 20
 # locally set fontsize will overwrite globally defined setting!
-plt.rcParams.update({'font.size': 20, 'font.family': 'Times New Roman'})
+plt.rcParams.update({'font.size': 20, 'font.family': 'Arial'})
 
 ##TODO obacht filter für samples die BN im namen enthalten!!!
-##TODO Anpassen: OmeB und RdhB sollen auch mit nur einem detektierten peptid angezeigt werden
+##TODO Anpassen: Aus den locus tags die nullen entfernen
 ##TODO labels die den subgroups zugeordnet werden überragen den plot! -> jetzt einfach hard gecoded... kein ahnung Zeile 156
 
 # data contains the joined columns and rows from db tables "proteins", "result" and "analysis" where the requested date and protein descriptions match
 # no contaminants
 # Filter for non-transmembrane proteins in the OHR complex:
-    # only proteins under the top ten ranked proteins
-    # mind 2 peptide
-    # min abundance 10^5
+    # only proteins under the top x ranked proteins
+    # mind x peptide
+    # min abundance x
 # no mind peptide or min abundance filter for RdhB and OmeB applied
 data = pd.read_sql_query('''
         SELECT * FROM (
@@ -45,43 +45,51 @@ data = pd.read_sql_query('''
         FROM proteins
         INNER JOIN result r ON r.id = proteins.result_id
         INNER JOIN analysis a ON a.id = r.analysis_id
-        WHERE r.analysis_id = 94 -- Adjust as per your database schema
-            AND proteins.accession LIKE 'cbdbA%'
+        WHERE r.analysis_id = 92
+            AND proteins.accession LIKE 'cbdb%'
             AND proteins.abundance <> ''
-            AND (
-                proteins.numUniquePeptides >= 2
-                OR (
-                    proteins.description LIKE '%RdhB%'
-                    AND proteins.numUniquePeptides >= 1
-                )
-                OR (
-                    proteins.description LIKE '%OmeB%'
-                    AND proteins.numUniquePeptides >= 1
-                )
-            )
-            AND (
-                proteins.abundance > 100000
-                OR proteins.description IN ('RdhA', 'OmeA', 'HupL', 'HupS', 'HupX') -- Removed RdhB and OmeB from here
-                OR proteins.description LIKE '%RdhB%' -- Include RdhB if abundance condition is met
-                OR proteins.description LIKE '%OmeB%' -- Include OmeB if abundance condition is met
-            )
-            AND r.sample NOT LIKE '%FT%'
-            AND r.sample NOT LIKE '%frac%'
-            AND r.sample NOT LIKE '%B%'
+            AND proteins.numUniquePeptides >= 2
+            AND proteins.abundance > 100000
+            AND (r.sample LIKE '%A1 Fraction A%'
+            OR r.sample LIKE 'B1 Fraction B%'
+        )
     ) AS t
 ) AS u
-WHERE u.rank < 11
+WHERE u.rank < 51
     AND (
-        u.description LIKE '%rdhA%' -- AND u.accession = 'cbdbA0238'
-        OR u.description LIKE '%rdhB%'
+        u.description LIKE '%rdhA%' --AND u.accession = 'cbdbA0084'
         OR u.description LIKE '%OmeA%'
-        OR u.description LIKE '%OmeB%'
         OR u.description LIKE '%hupL%'
         OR u.description LIKE '%hupS%'
         OR u.description LIKE '%hupX%'
-    ) 
-''', conn)
+    )
+    
+UNION ALL
 
+SELECT
+    r.sample,
+    proteins.result_id,
+    proteins.accession,
+    proteins.description,
+    proteins.coverage,
+    proteins.numPeptides,
+    proteins.abundance,
+    proteins.MW,
+    proteins.numUniquePeptides,
+    NULL as rank
+FROM proteins
+INNER JOIN result r ON r.id = proteins.result_id
+INNER JOIN analysis a ON a.id = r.analysis_id
+WHERE r.analysis_id = 92
+    AND proteins.accession LIKE 'cbdb%'
+    AND proteins.abundance <> ''
+    AND (proteins.description LIKE '%omeB%' 
+        OR proteins.description LIKE '%rdhB%' --AND proteins.accession = 'cbdbA0239'
+        )
+    AND (r.sample LIKE 'A1 Fraction A%'
+        OR r.sample LIKE 'B1 Fraction B%'
+        )
+''', conn)
 
 print(data)
 
@@ -131,7 +139,7 @@ x_ticks = []
 labels = pd.Series()
 for experiment in data['sample'].unique():
     subgroup = data.loc[data['sample'] == experiment]
-    labels = labels.append(subgroup['accession'])
+    labels = labels.append(subgroup['accession'].str.replace(r'(cbdb[A-Z])0+(\d+)', r'\1\2'))
 
     # use a for loop to fill x_ticks array with position number for accession description on x-axis
     # index + offset = numeric position
@@ -144,16 +152,16 @@ for experiment in data['sample'].unique():
            label=subgroup['accession'], width=0.8)
 
     # add text to print the subgroup name above the sub chart
-    ax.text((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset -0.5, # the last value (offset- x ) defines the position of the label
+    ax.text((((subgroup.tail(1).index + subgroup.head(1).index) // 2)[0]) - 0.5 + offset +0.1, # the last value (offset- x ) defines the position of the label
             subgroup['abundance'].max() * 1.1,
             subgroup['sample'].unique()[0])
     # increment offset by one (after a loop over one experiment -> defined by sample name) so there is a space free between the groups
-    offset += 3
+    offset += 2
 
 # add protein accessions as label to the x-axis
 ax.set_xticks(x_ticks)
-ax.set_xticklabels(labels, rotation=70, ha='right', fontsize=15)
-ax.set_ylim(100000, 100000000) # hard coded y-lim --> damit die scheiß labels nicht rausragen
+ax.set_xticklabels(labels, rotation=70, ha='right', fontsize=14)
+ax.set_ylim(1900, 1000000000) # hard coded y-lim --> damit die scheiß labels nicht rausragen
 
 # shift the x-ticks slightly more right to align labels with ticks
 # create offset transform (x=7pt) -> shifting distance
@@ -198,7 +206,8 @@ plt.legend(handles=patches, bbox_to_anchor=(1.01, 1), loc='upper left', borderax
 plt.subplots_adjust(bottom=0.2, right=0.9, top=0.9)
 
 # name axis
-ax.set_ylabel(ylabel='Intensity')
+ax.set_ylabel(ylabel='MS1 precursor intensity')
+ax.set_xlabel(xlabel='Locus tag')
 
 # name the plot
 # name according the "comment" entry from "analysis" extracted previously when sql connection was established
@@ -208,5 +217,6 @@ ax.set_ylabel(ylabel='Intensity')
 fig.tight_layout()
 
 # show the plot or save it as a .png
+plt.savefig('AEX_SEC_proteomics.svg', format='svg')
 plt.show()
-fig.savefig('20240401_Ingel')
+fig.savefig('figure_name')

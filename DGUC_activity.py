@@ -54,12 +54,14 @@ host.tick_params(axis='x', labelsize=13)
 host.set_xlim(xmin, xmax)
 host.set_ylim(ymin, ymax)
 
-dx, dy = 40, 0 #12
+dx, dy =25, 0 #12
 offset = ScaledTranslation(dx / fig.dpi, dy / fig.dpi, scale_trans=fig.dpi_scale_trans)
 
 # apply offset transform to xticklabels
 for label in host.xaxis.get_majorticklabels():
     label.set_transform(label.get_transform() + offset)
+
+host.tick_params(axis='x', labelsize=14, rotation=45)
 
 if activity_test == "Dehalogenase":
     host.set_ylabel('Relative dehalogenase activity (%)', fontsize=18, color='red')
@@ -70,7 +72,7 @@ if activity_test == "Dehalogenase+Hydrogenase":
 
 if activity_test == 'Dehalogenase':
     bars = host.bar(activity['DGUC fraction'], activity['Activity [%]'], fraction_size,
-                    align='edge', color='red', alpha=0.4,
+                    align='edge', color='red', alpha=0.3,
                     edgecolor="black", yerr=std_dev_masked,
                     error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
 elif activity_test == 'Hydrogenase':
@@ -80,11 +82,11 @@ elif activity_test == 'Hydrogenase':
                     error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
 elif activity_test == 'Dehalogenase+Hydrogenase':
     bars1 = host.bar(activity['DGUC fraction'], activity['Activity BV [%]'], fraction_size,
-                     align='edge', color='blue', alpha=0.4,
+                     align='edge', color='blue', alpha=0.3,
                      edgecolor="black", yerr=std_dev_masked_BV,
                      error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
     bars2 = host.bar(activity['DGUC fraction'] , activity['Activity MV [%]'], fraction_size,
-                     align='edge', color='red', alpha=0.5,
+                     align='edge', color='red', alpha=0.4,
                      edgecolor="black", yerr=std_dev_masked_MV,
                      error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
 

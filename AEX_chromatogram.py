@@ -12,28 +12,27 @@ from functions import get_flowrate_changes, time_to_elution_volume
 
 # Set plot font globally to Times New Roman and set globally font size to 20
 # locally set fontsize will overwrite globally defined setting!
-plt.rcParams.update({'font.family': 'Times New Roman'})
+plt.rcParams.update({'font.family': 'Arial'})
 
 
 activity_test = 'Dehalogenase'
 
-figure_name = '20220421_AEX_detergent_exchange'
+figure_name = '20241030_AEX'
 
 fraction_size = 1
 
 xmin = 0
-xmax = 50
-step = 5  # steps on x-axis
-ymin = -2
-
+xmax = 36
+step = 2  # steps on x-axis
+ymin = 0
 # ymin = df['UV1_280nm'].min() + 5
 # ymax = df['UV1_280nm'].max() + 5
-ymax = 50
+ymax = 80
 
 # open csv file of interest but skip the first two rows
 all_data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20220421_AEX_LB143b\20220421_LB143b_detergent_exchange.csv',
-    skiprows=2, delimiter=';')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
+    r'C:\Users\hellmold\Nextcloud\Experiments\Anion_exchange_chromatography\20241030_AEX_digitonin.csv',
+    skiprows=2, delimiter=',')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
 all_data.rename(columns={'min.8': 'time_point', ' ml/min': 'flow_rate'}, inplace=True)
@@ -67,22 +66,24 @@ elution = series_elution.apply(lambda x, f=flowrate_list: time_to_elution_volume
 df_frac = pd.DataFrame(all_data.iloc[:, [20]].dropna())
 series_frac = df_frac['min.10'].dropna()
 frac = series_frac.apply(lambda x, f=flowrate_list: time_to_elution_volume(x, f))
-print(frac)
+#print(frac)
 
-# define df for activity (columns: u, v, w (activity)
-activity_df = all_data.iloc[:, 20:23].dropna()
+# define df for activity (columns: u, v, w (activity), x (STABWN))
+activity_df = all_data.iloc[:, 20:24].dropna()
 activity_df['frac_start [ml]'] = frac
 activity_df.drop(activity_df[(activity_df['(Fractions)'] == 'Waste')].index, inplace=True)
+#print(activity_df['(Fractions)'])
+#print(activity_df)
 
 y1 = chromatogram_df['UV1_280nm']
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 
 y2_start = chromatogram_df['UV2_360nm'][3]
-y2 = chromatogram_df['UV2_360nm'].dropna().apply(lambda x: x - y2_start)
+y2 = chromatogram_df['UV2_360nm'].dropna().apply(lambda x: x - y2_start +2)
 
 y3_start = chromatogram_df['UV3_410nm'][3]
-y3 = chromatogram_df['UV3_410nm'].dropna().apply(lambda x: x - y3_start)
+y3 = chromatogram_df['UV3_410nm'].dropna().apply(lambda x: x - y3_start +2)
 
 y4 = all_data['%B'].dropna()
 y4_min = 0
@@ -101,17 +102,18 @@ par3 = host.twinx()
 par4 = host.twinx()
 
 # set x and y axis + labels + define tick size
-host.set_xlabel("Elution volume [ml]", fontsize=18)
-host.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
+host.set_xlabel("Elution volume (ml)", fontsize=18)
+host.set_ylabel("Absorption (mAU)", fontsize=18, color='black')
 host.tick_params(axis='y', labelsize=14)
 # par1.set_ylabel("Absorption [mAU]", fontsize=18, color='black')
 # par1.tick_params(axis='y', labelsize=14)
+
 if activity_test == "Dehalogenase":
-    par3.set_ylabel('Dehalogenase Activity [%]', fontsize=18, color='red')
+    par3.set_ylabel('Relative dehalogenase activity (%)', fontsize=18, color='red')
 if activity_test == "Hydrogenase":
-    par3.set_ylabel('Hydrogenase Activity [%]', fontsize=18, color='blue')
+    par3.set_ylabel('Hydrogenase activity (%)', fontsize=18, color='blue')
 par3.tick_params(axis='y', labelsize=14)
-par4.set_ylabel('Concentration B [%]', fontsize=18, color='black')
+par4.set_ylabel('Concentration B (%)', fontsize=18, color='black')
 par4.tick_params(axis='y', labelsize=14)
 
 # add a second x-axis
@@ -133,6 +135,7 @@ host.tick_params(axis='x', labelsize=14)
 # set x2-ticks (collected fractions) -> delete useless fractions in csv file manually
 col_frac_to_list = activity_df['(Fractions)'].tolist()
 x3 = col_frac_to_list
+print(x3)
 
 host2.xaxis.set_ticks(activity_df['frac_start [ml]'].values.tolist())  # wo die ticks gesetzt werden
 host2.xaxis.set_ticklabels(x3)  # was an den ticks steht
@@ -141,7 +144,7 @@ host2.set_xlim(xmin, xmax)  # needs to be repeated here?! otherwise out of range
 
 # shift the x-ticks (collected fractions) slightly more right to align labels with ticks
 # create offset transform (x=18pt) -> shifting distance
-dx, dy = 18, 0
+dx, dy = 14, 0
 offset = ScaledTranslation(dx / fig.dpi, dy / fig.dpi, scale_trans=fig.dpi_scale_trans)
 
 # apply offset transform to xticklabels
@@ -150,7 +153,7 @@ for label in host2.xaxis.get_majorticklabels():
 
 # set colors
 color1 = 'blue'
-color2 = 'orange'
+color2 = 'orangered'
 color3 = 'grey'
 color4 = 'black'
 
@@ -168,23 +171,32 @@ power_smooth4 = spl4(xnew)
 p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
 p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
 p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
+
+# Masking zero standard deviations
+std_dev_masked = [np.nan if sd == 0 else sd for sd in activity_df['STABWN']]
+
 if activity_test == 'Dehalogenase':
     par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]'], fraction_size, align='edge', color='red', alpha=0.3,
-             edgecolor="black")
+             edgecolor="black", yerr=std_dev_masked, error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
+    par3.set_ylim(bottom=0)
 if activity_test == 'Hydrogenase':
     par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]'], fraction_size, align='edge', color='blue', alpha=0.3,
-             edgecolor="black")
-p4, = par4.plot(xnew, power_smooth4, color=color4, label="Concentration B [%]")
+             edgecolor="black", yerr=std_dev_masked, error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
+    par3.set_ylim(bottom=0)
 
-# TODO: get a joined legend of host and par1
-# set legend
-# px = p1, + p2, + p3,
-# labs = [l.get_label() for l in px]
-# host.legend(px, labs, loc=10)
+p4, = par4.plot(xnew, power_smooth4, color=color4, label="Concentration B (%)")
 
-# host.legend(loc=1)
-par4.legend(loc=1)
-host.legend(loc=2)
+# Collect legend handles and labels from host and par4
+handles_host, labels_host = host.get_legend_handles_labels()
+handles_par4, labels_par4 = par4.get_legend_handles_labels()
+
+# Combine the handles and labels
+combined_handles = handles_host + handles_par4
+combined_labels = labels_host + labels_par4
+
+# Plot the combined legend on the host axis
+host.legend(combined_handles, combined_labels, loc='upper right')  # Adjust 'loc' as needed
+
 
 # set grid
 host.xaxis.grid(color='gray', linestyle='-', linewidth=0.5)
@@ -201,5 +213,7 @@ fig.tight_layout()
 # par1.yaxis.label.set_color(p2.get_color())
 # par2.yaxis.label.set_color(p3.get_color())
 
-plt.show()
+plt.savefig('Diss.svg', format='svg')
 fig.savefig(figure_name)
+plt.show()
+

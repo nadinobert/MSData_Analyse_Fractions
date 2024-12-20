@@ -1,7 +1,7 @@
 -- warum funktioniert die kaskade beim löschen nicht mehr? wenn in analysis oder result gelöscht wird, wird peptide und protein nicht gelöscht
 
 --DELETE FROM analysis
---WHERE id = 96;
+--WHERE id = 107;
 
 -- Get partner proteins RdhA und RdhB
 -- set analysis_id of interest
@@ -27,38 +27,50 @@ SELECT DISTINCT proteins.accession, r.sample, proteins.abundance, proteins.descr
 FROM proteins
     INNER JOIN result r on r.id = proteins.result_id
     INNER JOIN analysis a on a.id = r.analysis_id
-    WHERE analysis_id = 48 AND
-          (proteins.description LIKE '%rdhA%')
+    WHERE analysis_id = 99 AND
+          (proteins.description LIKE '%rdh%')
 ;
+
+-- count the amount of proteins or peptides that were identified in each sample
+SELECT
+    r.sample,
+    COUNT(DISTINCT proteins.accession) AS protein_count
+FROM proteins
+    INNER JOIN result r ON r.id = proteins.result_id
+    INNER JOIN analysis a ON a.id = r.analysis_id
+WHERE a.id = 102
+    AND proteins.accession LIKE '%cbdbA%'
+GROUP BY r.sample;
 
 -- check if entry contains specific expression
 SELECT *
 FROM proteins p
 WHERE p.accession IN (SELECT RdhB_accession FROM rdhAB_Partner);
 
--- all proteins from a certain analysis wo contaminants
+-- all proteins from a certain analysis and a certain result wo contaminants
 SELECT *
 FROM proteins p
     INNER JOIN result r on r.id = p.result_id
     INNER JOIN analysis a on r.analysis_id = a.id
-    WHERE analysis_id = 94 AND
-          p.accession LIKE '%cbdbA%' AND
-   (description LIKE '%rdhA%' --AND accession = 'cbdbA0238')
-    OR description LIKE '%rdhB%'
-    OR description LIKE '%OmeA%'
-    OR description LIKE '%OmeB%'
-    OR description LIKE '%hupL%'
-    OR description LIKE '%hupS%'
-    OR description LIKE '%hupX%')
+    WHERE
+    analysis_id = 109 AND
+          p.accession LIKE '%cbdb%' AND
+          r.id = 2494
+          --r.sample = 'frac11+12' AND
+   --(description LIKE '%rdhA%' --AND accession = 'cbdbA0238')
+    --OR description LIKE '%rdhB%'
+    --OR description LIKE '%OmeA%'
+    --OR description LIKE '%OmeB%'
+    --OR description LIKE '%hupL%'
+    --OR description LIKE '%hupS%'
+    --OR description LIKE '%hupX%')
 ;
-
 
 -- Top x proteins
 -- wo contaminants
 -- chose order by t.x (x = desired parameter for ranking)
--- Select only reasonable detected proteins in sample -> top x with highest coverage, number of unique peptides > x, abundance > x
+-- Select only reasonable detected proteins in sample -> top x with highest coverage or abundance, number of unique peptides > x, abundance > x
 -- rank function enables to define subgroups (partition) and order subgroups by defined parameter
--- only cbdbA238 listed
 SELECT * FROM (
     SELECT *, rank() over (
         partition by t.result_id
@@ -69,16 +81,16 @@ SELECT * FROM (
             proteins.result_id,
             proteins.accession,
             proteins.description,
-            --proteins.coverage,
-            --proteins.numPeptides,
+            proteins.coverage,
+            proteins.numPeptides,
             proteins.abundance,
             proteins.MW,
             proteins.numUniquePeptides
         FROM proteins
         INNER JOIN result r on r.id = proteins.result_id
         INNER JOIN analysis a on a.id = r.analysis_id
-        WHERE analysis_id = 70 AND
-              accession LIKE '%cbdbA%' AND
+        WHERE analysis_id = 109 AND
+              accession LIKE '%cbdb%' AND
               proteins.abundance <> '' AND
               proteins.numUniquePeptides >= 2 AND
               proteins.abundance > 100000
@@ -97,11 +109,12 @@ WHERE u.rank < 11 --AND
 --Find all (OHR) protein in a specific analysis
 --wo contaminants
 SELECT *
-FROM proteins
-    INNER JOIN result r on proteins.result_id = r.id
+FROM peptides
+    INNER JOIN result r on peptides.result_id = r.id
     INNER JOIN analysis a on a.id = r.analysis_id
-    WHERE analysis_id = 84 AND
-          proteins.abundance <> '' --AND
+    WHERE analysis_id = 95 AND
+          peptides.abundance <> ''
+      AND peptides.accession LIKE '%cbdbA%'
           --proteins.markedAs = 'False'--AND
              --(description LIKE '%rdhA%'
         --OR description LIKE '%rdhB%'
@@ -110,7 +123,7 @@ FROM proteins
         --OR description LIKE '%hupL%'
         --OR description LIKE '%hupS%'
         --OR description LIKE '%hupX%')
-ORDER BY proteins.result_id, proteins.abundance DESC
+ORDER BY peptides.result_id, peptides.abundance DESC
 ;
 --check a set of results for contaminants -> "marked as" '' (nothing) or markedAs True
 SELECT *
@@ -404,7 +417,7 @@ inner join
     analysis a2 on r.analysis_id = a2.id
 WHERE ((y.start >= t.start AND y.start <= t.end) OR (y.end >= t.start AND y.end <= t.end))
   AND
-      (a2.id = 59)
+      (a2.id = 104)
 ;
 
 
@@ -451,8 +464,68 @@ INNER JOIN analysis a on a.id = r.analysis_id
 WHERE p.description LIKE '%protease%'
 ;
 
--- shows if if peptides from a certain protein were detected over all trials
+-- shows if peptides from a certain protein were detected over all trials
 -- file name: TMAreas
 select * from
 peptides p
 WHERE p.accession = 'cbdbA1690'
+;
+
+-- try out chat gpt code for Dissertation plotting:
+SELECT * FROM (
+    SELECT *, RANK() OVER (
+        PARTITION BY t.result_id
+        ORDER BY t.abundance DESC
+    ) AS rank FROM (
+        SELECT
+            r.sample,
+            proteins.result_id,
+            proteins.accession,
+            proteins.description,
+            proteins.coverage,
+            proteins.numPeptides,
+            proteins.abundance,
+            proteins.MW,
+            proteins.numUniquePeptides
+        FROM proteins
+        INNER JOIN result r ON r.id = proteins.result_id
+        INNER JOIN analysis a ON a.id = r.analysis_id
+        WHERE r.analysis_id = 92
+            AND proteins.accession LIKE 'cbdbA%'
+            AND proteins.abundance <> ''
+            AND proteins.numUniquePeptides >= 2
+            AND proteins.abundance > 100000
+    ) AS t
+) AS u
+WHERE u.rank < 50
+    AND (
+        u.description LIKE '%rdhA%' -- AND u.accession = 'cbdbA0238'
+        OR u.description LIKE '%rdhB%'
+        OR u.description LIKE '%OmeA%'
+        OR u.description LIKE '%OmeB%'
+        OR u.description LIKE '%hupL%'
+        OR u.description LIKE '%hupS%'
+        OR u.description LIKE '%hupX%'
+    )
+UNION ALL
+
+SELECT
+    r.sample,
+    proteins.result_id,
+    proteins.accession,
+    proteins.description,
+    proteins.coverage,
+    proteins.numPeptides,
+    proteins.abundance,
+    proteins.MW,
+    proteins.numUniquePeptides,
+    NULL as rank
+FROM proteins
+INNER JOIN result r ON r.id = proteins.result_id
+INNER JOIN analysis a ON a.id = r.analysis_id
+WHERE r.analysis_id = 92
+    AND proteins.accession LIKE 'cbdbA%'
+    AND proteins.abundance <> ''
+    AND (proteins.description LIKE '%rdhB%'
+        OR proteins.description LIKE '%omeB%')
+;
