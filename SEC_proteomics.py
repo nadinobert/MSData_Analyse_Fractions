@@ -45,20 +45,20 @@ data = pd.read_sql_query('''
         FROM proteins
         INNER JOIN result r ON r.id = proteins.result_id
         INNER JOIN analysis a ON a.id = r.analysis_id
-        WHERE r.analysis_id = 92
+        WHERE r.analysis_id = 104
             AND proteins.accession LIKE 'cbdb%'
             AND proteins.abundance <> ''
             AND proteins.numUniquePeptides >= 2
             AND proteins.abundance > 100000
-            AND (r.sample LIKE '%A1 Fraction A%'
-            OR r.sample LIKE 'B1 Fraction B%'
+            AND (r.sample LIKE '%AEX%'
+            --OR r.sample LIKE 'B1 Fraction B%'
         )
     ) AS t
 ) AS u
 WHERE u.rank < 51
     AND (
-        u.description LIKE '%rdhA%' --AND u.accession = 'cbdbA0084'
-        OR u.description LIKE '%OmeA%'
+        u.description LIKE '%rdhA%' AND u.accession = 'cbdbA0084'
+        OR u.description LIKE '%omeA%'
         OR u.description LIKE '%hupL%'
         OR u.description LIKE '%hupS%'
         OR u.description LIKE '%hupX%'
@@ -80,14 +80,14 @@ SELECT
 FROM proteins
 INNER JOIN result r ON r.id = proteins.result_id
 INNER JOIN analysis a ON a.id = r.analysis_id
-WHERE r.analysis_id = 92
+WHERE r.analysis_id = 104
     AND proteins.accession LIKE 'cbdb%'
     AND proteins.abundance <> ''
     AND (proteins.description LIKE '%omeB%' 
-        OR proteins.description LIKE '%rdhB%' --AND proteins.accession = 'cbdbA0239'
+        OR proteins.description LIKE '%rdhB%' AND proteins.accession = 'cbdbA0239'
         )
-    AND (r.sample LIKE 'A1 Fraction A%'
-        OR r.sample LIKE 'B1 Fraction B%'
+    AND (r.sample LIKE 'AEX%'
+    --    OR r.sample LIKE 'B1 Fraction B%'
         )
 ''', conn)
 
