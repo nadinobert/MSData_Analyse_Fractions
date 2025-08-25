@@ -1,12 +1,14 @@
-import data as data
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib import Path
-import pandas as pd
-from scipy.interpolate import make_interp_spline
-from matplotlib.transforms import ScaledTranslation
-import matplotlib.ticker as ticker
 import os
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+from pathlib import Path  # <- This is the correct import
+from matplotlib import Path as mPath  # If you need matplotlib's Path, import it with a different name
+from matplotlib.transforms import ScaledTranslation
+from scipy.interpolate import make_interp_spline
+
+from AEX_chromatogram import df_elution
 
 # TODO es ist jetzt aktuell die standardabweichung der aktivitäten in einer extra spalte berücksichtigt. Muss jetzt immer händisch in das csv file eingefügt werden
 # TODO es soll aufgefordrt werden Activity werte hinzuzufügen und eine extra spalte dafür eingefügt werden (column 23)
@@ -16,35 +18,43 @@ import os
 plt.rcParams.update({'font.family': 'Arial'})
 
 # open csv file of interest but skip the first two rows
-directory_path = Path(r"C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20241031_SEC_AEX_frac") # the r enables the use of \ without interpreting it as escape sign
-file_name = '20241031_SEC_AEX_frac_digitonin.csv'
+directory_path = Path(r"C:\Users\hellmold\Nextcloud\Experiments\Size_exclusion_chromatography\20250821_Exp2_SEC2") # the r enables the use of \ without interpreting it as escape sign
+file_name = '20250821_Exp2_SEC_Superdex_10_300_2.csv'
 data = pd.read_csv(
     os.path.join(directory_path, file_name),
     skiprows=2, delimiter=',')  # falls mit tabs getrennt '\t' oder';'
 
 # change the headers (3 x mAU) to unique headers for UV absorbance
-names = data.columns.tolist()
-names[1] = 'UV1_280nm'
-names[3] = 'UV2_360nm'
-names[5] = 'UV3_410nm'
-data.columns = names
+new_names = {
+    data.columns[0]: 'min_280nm',
+    data.columns[1]: 'UV1_280nm',
+    data.columns[2]: 'min_410nm',
+    data.columns[3]: 'UV2_410nm',
+    data.columns[4]: 'min_450nm',
+    data.columns[5]: 'UV3_450nm'
+}
 
-df = pd.DataFrame(data, columns=['min', 'UV1_280nm', 'UV2_360nm', 'UV3_410nm'])
-df = df.drop_duplicates(subset=['min'], keep='last').dropna()
+# Rename the columns
+data = data.rename(columns=new_names)
+
+df_280 = data[['min_280nm', 'UV1_280nm']].dropna().drop_duplicates(subset=['min_280nm'], keep='last')
+df_410 = data[['min_410nm', 'UV2_410nm']].dropna().drop_duplicates(subset=['min_410nm'], keep='last')
+df_450 = data[['min_450nm', 'UV3_450nm']].dropna().drop_duplicates(subset=['min_450nm'], keep='last')
+
 
 # parameters for plot/ figure
-figure_name = "20241030_SEC_MV"
+figure_name = "20250821_SEC_BV"
 flowrate = 0.4  # [ml/min]
-xmin = 5
-xmax = 20
+xmin = 1
+xmax = 23
 stepx1 = 1  # steps on x-axis
 y1min = 0
-y1max = 20
+y1max = 10
 stepy1 = 2
 y2min = 0
-y2max = 20
-stepy2 = 2
-fraction_size = 0.5
+y2max = 4
+stepy2 = 1
+fraction_size = 1
 
 column_type = "big"             #small or big sec column
 activity_test = "Dehalogenase"  #Dehalogenase, Hydrogenase or Dehalogenase+Hydrogenase
@@ -52,11 +62,23 @@ activity_test = "Dehalogenase"  #Dehalogenase, Hydrogenase or Dehalogenase+Hydro
 # define the different columns as plot and x values
 # "elution" ist die von "min" in elution volumen umgerechnete spalte
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
-elution = df['min'].dropna().apply(lambda x: x * flowrate)
+# Create elution times and absorbance values
+elution_280 = df_280['min_280nm'].apply(lambda x: x * flowrate)
+y1 = df_280['UV1_280nm'].apply(lambda x: x + 6)
+
+elution_410 = df_410['min_410nm'].apply(lambda x: x * flowrate)
+y2_start = df_410['UV2_410nm'].iloc[5]
+y2 = df_410['UV2_410nm'].apply(lambda x: x - y2_start)
+
+elution_450 = df_450['min_450nm'].apply(lambda x: x * flowrate)
+y3_start = df_450['UV3_450nm'].iloc[5]
+y3 = df_450['UV3_450nm'].apply(lambda x: x - y3_start + 1)
+
 frac = data.iloc[:, [20]].dropna().apply(lambda x: x * flowrate)
 
-# define df for activity for hyd and dehy test (columns: u, v, w, x, y, z)
-# define df for activity for hyd or dehy test (columns: u, v, w, x)
+
+# define df for activity for hyd and deh test (columns: u, v, w, x, y, z)
+# define df for activity for hyd or deh test (columns: u, v, w, x)
 if activity_test == 'Dehalogenase+Hydrogenase':
     activity = data.iloc[:, 20:26].dropna()
     activity.columns = ["min", "Fractions", "Activity BV [%]", "STABWN BV", "Activity MV [%]", "STABWN MV"]
@@ -70,22 +92,21 @@ elif activity_test == 'Dehalogenase' or activity_test == 'Hydrogenase':
     activity['frac_start [ml]'] = frac
     # Masking zero standard deviations
     std_dev_masked = [np.nan if sd == 0 else sd for sd in activity['STABWN']]
-print(activity)
 
-
-y1 = df['UV1_280nm'].dropna().apply(lambda x: x +6)
+y1 = df_280['UV1_280nm'].dropna().apply(lambda x: x )
+print(y1)
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
-df_nonull = df[df['UV3_410nm'] != 0]
+df_nonull = df_410[df_410['UV2_410nm'] != 0]
 
 # y2_min = df_nonull['UV2_360nm'].min()
-y2_start = df['UV2_360nm'][5]
-y2 = df['UV2_360nm'].dropna().apply(lambda x: x -y2_start) #-y2_start
-print(y2)
+y2_start = df_410['UV2_410nm'][5]
+y2 = df_410['UV2_410nm'].dropna().apply(lambda x: x -y2_start) #-y2_start
 
 # y3_min= df_nonull['UV3_410nm'].min()
-y3_start = df['UV3_410nm'][5]
-y3 = df['UV3_410nm'].dropna().apply(lambda x: x -y3_start +1) #-y3_start
+y3_start = df_450['UV3_450nm'][5]
+y3 = df_450['UV3_450nm'].dropna().apply(lambda x: x -y3_start +1) #-y3_start
+
 
 # Create figure and subplot manually
 fig = plt.figure()
@@ -163,15 +184,15 @@ array = np.arange(xmin, xmax, stepx1)
 # calculate molecular sizes according to regression from standard run (27.07.2021) y=-2.8799x + 6.986 !!! Ve=x in ml !!!!
 if column_type == "small":
     # small column calibration 20210723
-    #x4 = [round(10 ** ((i/1.42) * (-6.1891) + 9.4435)) for i in array]  # int function shows number without decimal places, round function defines decimal places
-    x4 = [round(10 ** ((i/1.07) * (-1.6859) + 4.4949)) for i in array]
+    #size_assignment_kDa = [round(10 ** ((i/1.42) * (-6.1891) + 9.4435)) for i in array]  # int function shows number without decimal places, round function defines decimal places
+    size_assignment_kDa = [round(10 ** ((i/1.07) * (-1.6859) + 4.4949)) for i in array]
 if column_type == "big":
     #big column approach 20230109 Schebnem
-    ##x4 = [int(10 ** (i * (-0.1875) + 4.4974)) for i in array]
+    ##size_assignment_kDa = [int(10 ** (i * (-0.1875) + 4.4974)) for i in array]
     #big column approach 20231204 Digitonin
-    x4 = [int(10 ** (i * (-0.1894) + 4.6396)) for i in array]
+    size_assignment_kDa = [int(10 ** (i * (-0.1894) + 4.6396)) for i in array]
 
-host3.xaxis.set_ticklabels(x4)
+host3.xaxis.set_ticklabels(size_assignment_kDa)
 host3.tick_params(axis='x', labelsize=14, rotation=45)
 
 if activity_test == 'Dehalogenase':
@@ -199,18 +220,23 @@ color1 = 'blue'
 color2 = 'orangered'
 color3 = 'black'
 
-# power_smooth einleiten um plot smooth zu machen und so
-xnew = np.linspace(min(elution.tolist()), max(elution.tolist()), 912)
-spl1 = make_interp_spline(elution.tolist(), y1, k=3)
-power_smooth1 = spl1(xnew)
-spl2 = make_interp_spline(elution.tolist(), y2, k=3)
-power_smooth2 = spl2(xnew)
-spl3 = make_interp_spline(elution.tolist(), y3, k=3)
-power_smooth3 = spl3(xnew)
+# Now for the spline interpolation, use these separate series
+xnew_280 = np.linspace(min(elution_280), max(elution_280), 912)
+spl1 = make_interp_spline(elution_280, y1, k=3)
+power_smooth1 = spl1(xnew_280)
 
-p1, = host.plot(xnew, power_smooth1, color=color1, label="280 nm")
-p2, = host.plot(xnew, power_smooth2, color=color2, label="360 nm")
-p3, = host.plot(xnew, power_smooth3, color=color3, label="410 nm")
+xnew_410 = np.linspace(min(elution_410), max(elution_410), 912)
+spl2 = make_interp_spline(elution_410, y2, k=3)
+power_smooth2 = spl2(xnew_410)
+
+xnew_450 = np.linspace(min(elution_450), max(elution_450), 912)
+spl3 = make_interp_spline(elution_450, y3, k=3)
+power_smooth3 = spl3(xnew_450)
+
+
+p1, = host.plot(xnew_280, power_smooth1, color=color1, label="280 nm")
+p2, = host.plot(xnew_410, power_smooth2, color=color2, label="410 nm")
+p3, = host.plot(xnew_450, power_smooth3, color=color3, label="450 nm")
 
 # TODO: get a joined legend of host and par1
 # set legend
