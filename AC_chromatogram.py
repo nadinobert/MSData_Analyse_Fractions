@@ -19,21 +19,19 @@ plt.rcParams.update({'font.family': 'Arial'})
 
 activity_test = 'Hydrogenase'
 
-figure_name = '20250806_AC'
-
-fraction_size = 1
+figure_name = '20250903_AC_BufferD'
 
 xmin = 4
-xmax = 20
+xmax = 17
 step = 2  # steps on x-axis
-ymin = 3
+ymin = 0
 # ymin = df['UV1_280nm'].min() + 5
 # ymax = df['UV1_280nm'].max() + 5
 ymax = 15
 
 # open the csv file of interest but skip the first two rows
 data = pd.read_csv(
-    r'C:\Users\hellmold\Nextcloud\Experiments\Affinity_chromatography\20250820_Exp2\20250820_Exp2_AC_StrepTactin_XT_Flow.csv',
+    r'C:\Users\hellmold\Nextcloud\Experiments\Affinity_chromatography\20250903_Exp3\20250903_AC_Strep_Tactin_XT_4Flow_stepgradient_BufferD.csv',
     skiprows=2, delimiter=',')  # falls mit tabs getrennt '\t' oder';' regex doesnt work
 
 
@@ -48,8 +46,10 @@ new_names = {
     data.columns[5]: '%B',
     data.columns[20]: 'time_point',
     data.columns[21]: 'flow_rate',
-    data.columns[45]: 'Activity (nkat)',
-    data.columns[46]: 'Standarddeviation (nkat)'
+    data.columns[40]: 'min',
+    data.columns[41]: 'Fraction',
+    data.columns[44]: 'Activity (nkat)',
+    data.columns[45]: 'Standarddeviation (nkat)'
 }
 
 
@@ -58,6 +58,7 @@ data = data.rename(columns=new_names)
 
 #chromatogram_df = pd.DataFrame(data, columns=['min_280nm', 'UV1_280nm', 'min_410nm', 'UV2_410nm','min_450nm', 'UV3_450nm', 'min_%B', '%B'])
 
+print(data)
 
 df_280 = data[['min_280nm', 'UV1_280nm']].dropna().drop_duplicates(subset=['min_280nm'], keep='last')
 df_410 = data[['min_410nm', 'UV2_410nm']].dropna().drop_duplicates(subset=['min_410nm'], keep='last')
@@ -82,30 +83,31 @@ elution_B = df_B['min_%B'].dropna().apply(lambda x, f=flowrate_list: time_to_elu
 # "frac" ist die spalte mit den gesammelten fraktionen in dem data sheet
 # calc elution start volume for every fraction
 df_frac = pd.DataFrame(data.iloc[:, [40]].dropna())
-series_frac = df_frac['min.21'].dropna()
+series_frac = df_frac['min'].dropna()
 frac = series_frac.apply(lambda x, f=flowrate_list: time_to_elution_volume(x, f))
-#print(frac)
+print(frac)
 
-# define df for activity (columns: u, v, w (activity), x (STABWN))
-activity_df = data.iloc[:, 20:24].dropna()
-activity_df['frac_start [ml]'] = frac
-activity_df.drop(activity_df[(activity_df['(Fractions)'] == 'Waste')].index, inplace=True)
-#print(activity_df['(Fractions)'])
+# define df for activity (columns: ao, ap, as (activity), at (STABWN))
+activity_df = data.iloc[:, [40, 41, 44, 45]].dropna()
 print(activity_df)
+activity_df['frac_start [ml]'] = frac
+activity_df.drop(activity_df[(activity_df['Fraction'] == 'Waste')].index, inplace=True)
+#print(activity_df['(Fractions)'])
+
 
 y1 = df_280['UV1_280nm']
 # remove zero values from 360 (and 410nm)
 # TODO: es muss verdammt nochmal iwie diese kack baseline zuverlässig von 410 und 360 abgezogen werden
 
 y2_start = df_410['UV2_410nm'][3]
-y2 = df_410['UV2_410nm'].dropna().apply(lambda x: x - y2_start +2)
+y2 = df_410['UV2_410nm'].dropna().apply(lambda x: x - y2_start -0)
 
 y3_start = df_450['UV3_450nm'][3]
-y3 = df_450['UV3_450nm'].dropna().apply(lambda x: x - y3_start +2)
+y3 = df_450['UV3_450nm'].dropna().apply(lambda x: x - y3_start -0)
 
 y4 = data['%B'].dropna()
 y4_min = 0
-y4_max = 100
+y4_max = 110
 
 # Create figure and subplot manually
 fig = plt.figure()
@@ -151,7 +153,7 @@ host.tick_params(axis='x', labelsize=14)
 
 # TODO: automaddisch die unnötigen fractionen aus df löschen ohne die händisch aus csv file entfernen zu müssen
 # set x2-ticks (collected fractions) -> delete useless fractions in csv file manually
-col_frac_to_list = activity_df['(Fractions)'].tolist()
+col_frac_to_list = activity_df['Fraction'].tolist()
 x3 = col_frac_to_list
 
 host2.xaxis.set_ticks(activity_df['frac_start [ml]'].values.tolist())  # wo die ticks gesetzt werden
@@ -202,17 +204,27 @@ p2, = host.plot(xnew_410, power_smooth2, color=color2, label="410 nm")
 p3, = host.plot(xnew_450, power_smooth3, color=color3, label="450 nm")
 p4, = par4.plot(xnew_B, power_smooth4, color=color4, label="Concentration B (%)")
 
+# Calculate bar widths based on fraction start points
+bar_widths = []
+for i in range(len(activity_df['frac_start [ml]'])-1):
+    width = activity_df['frac_start [ml]'].iloc[i+1] - activity_df['frac_start [ml]'].iloc[i]
+    bar_widths.append(width)
+# For the last bar, use the same width as the previous one
+bar_widths.append(bar_widths[-1])
+
 # Masking zero standard deviations
-std_dev_masked = [np.nan if sd == 0 else sd for sd in activity_df['STABWN']]
+std_dev_masked = [np.nan if sd == 0 else sd for sd in activity_df['Standarddeviation (nkat)']]
+
 
 if activity_test == 'Dehalogenase':
-    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]])'], fraction_size, align='edge', color='red', alpha=0.3,
+    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity (nkat)'], bar_widths, align='edge', color='red', alpha=0.3,
              edgecolor="black", yerr=std_dev_masked, error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
     par3.set_ylim(bottom=0)
 if activity_test == 'Hydrogenase':
-    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity [%]'], fraction_size, align='edge', color='blue', alpha=0.3,
+    par3.bar(activity_df['frac_start [ml]'], activity_df['Activity (nkat)'], bar_widths, align='edge', color='blue', alpha=0.3,
              edgecolor="black", yerr=std_dev_masked, error_kw={'ecolor': 'black', 'capsize': 5, 'capthick': 1, 'elinewidth': 1})
     par3.set_ylim(bottom=0)
+
 
 
 # Collect legend handles and labels from host and par4
